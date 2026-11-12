@@ -1,43 +1,61 @@
-# HUMBLE model roster (6 models)
+# HUMBLE model roster
 
-Status: pre-training. Each row must be confirmed by the owner on the model card before download. Licenses and sizes below come from web search and are not yet checked against each card.
+Hackathon rule: the core submission must use a dense open-weights Cohere Labs model from the permitted list. Other models may be used only in a supplementary role.
 
-Cohere Labs models get priority. Three are Cohere Labs models (all CC BY-NC 4.0, gated, noncommercial). Three are Apache 2.0 from other labs.
+Permitted list (from the hackathon page): Tiny Aya Base, Tiny Aya Global, Tiny Aya Fire, Tiny Aya Water, Tiny Aya Earth, Aya Expanse 8B, Aya Expanse 32B.
 
-| # | Model (HF ID) | Lab | Size | License | Gated | Role | Owner |
-|---|---|---|---|---|---|---|---|
-| 1 | CohereLabs/tiny-aya-global | Cohere Labs | 3.35B (confirmed on card summary) | CC BY-NC 4.0 + Cohere AUP | Yes | PRIMARY: demo model, main grid | Person A |
-| 2 | CohereLabs/tiny-aya-fire | Cohere Labs | not confirmed (verify on card) | CC BY-NC 4.0 + Cohere AUP | Yes | Regional variant (South Asian languages); same family as #1 | Person A |
-| 3 | CohereLabs/aya-expanse-8b | Cohere Labs | 8B | CC BY-NC 4.0 + Cohere AUP | Yes | Scale check (8B) | Person B |
-| 4 | CohereLabs/c4ai-command-r7b-12-2024 | Cohere Labs | ~7B (verify) | CC BY-NC 4.0 | Yes | Second Cohere family, scale check | Person B |
-| 5 | Qwen/Qwen3-4B | Alibaba Qwen | ~4B (verify) | Apache 2.0 | No | Non-Cohere family, small | Person C |
-| 6 | HuggingFaceTB/SmolLM3-3B | Hugging Face | 3B | Apache 2.0 | No | Non-Cohere family, small | Person C |
+Status: pre-training. Exact Hugging Face IDs, sizes, and chat templates must be confirmed on each model card before download. The Cohere licenses below are CC BY-NC 4.0 with the Cohere Acceptable Use Policy.
 
-Reserve (use only if a primary model fails the pilot): mistralai/Ministral-3-3B-Instruct-2512 (Apache 2.0, Dec 2025); allenai/OLMo-2-0425-1B (Apache 2.0, card says "research and educational use"); Qwen/Qwen3-1.7B (Apache 2.0).
+## 1. Core roster (6 models, all permitted Cohere Labs)
 
-## Checks every model must pass in the pilot (E0) before any training
+Phasing: the MVP (by Nov 15) uses **only #1**. The other five run after the shortlist, in the Full phase. Each owner takes two models.
 
-1. Logit access: can we read token probabilities for "Yes" and "No" (needed for P(True)).
-2. Format compliance: at least 95% of outputs match `ANSWER: ... | CONF: ...` or `ABSTAIN`.
-3. Parser agreement: at least 95% against 50 hand-labeled items.
-4. Chat template recorded: the exact template string is saved in the run config.
-5. License and gate: the owner has accepted the terms and saved the card's license text in the model card folder.
+| # | Model (Hugging Face ID) | Size | Role | Phase | Owner |
+|---|---|---|---|---|---|
+| 1 | CohereLabs/tiny-aya-global | 3.35B (confirmed on card summary) | Primary and demo model; all MVP results | MVP | A + B |
+| 2 | CohereLabs/tiny-aya-fire | Verify on card | Same family, South Asian languages | Full | A |
+| 3 | CohereLabs/tiny-aya-water | Verify on card | Same family, European and Asia Pacific languages | Full | A |
+| 4 | CohereLabs/tiny-aya-earth | Verify on card | Same family, West Asian and African languages | Full | B |
+| 5 | CohereLabs/tiny-aya-base | Verify on card | Pretrained (non-instruct) base; checks whether the instruct tuning drives the effect | Full | B |
+| 6 | CohereLabs/aya-expanse-8b | 8B | Scale check (naive SFT, honest SFT, and repair only) | Full (MVP only if GPU is free on Nov 14) | C |
 
-A model that fails a check is dropped and replaced with a reserve model. Log the reason in `docs/models.md`.
+Ownership of the Full roster:
+- **A:** Tiny Aya Global (MVP), Tiny Aya Fire, Tiny Aya Water
+- **B:** Tiny Aya Earth, Tiny Aya Base
+- **C:** Aya Expanse 8B (plus integration)
 
-## Publishing constraints
+Removed from earlier versions: CohereLabs/c4ai-command-r7b-12-2024 (not on the permitted list).
 
-- All Cohere Labs models are noncommercial. Adapters derived from them must carry the CC BY-NC 4.0 license and the Cohere AUP on their model cards.
-- Apache 2.0 adapters carry Apache 2.0 and the base model's license notice.
-- The hackathon collections must be public and ungated. Confirm with the organizers that publishing gated-base adapters is allowed. If not, publish the code and configs only, plus predictions.
+Aya Expanse 32B is on the permitted list but is not in the roster. It is an option only if compute allows, and it would need its own budget line.
 
-## Verification status (fill in on the day)
+## 2. Supplementary (model-agnostic check only)
+
+| Model | License | Role |
+|---|---|---|
+| Qwen/Qwen3-4B or HuggingFaceTB/SmolLM3-3B (choose one) | Apache 2.0 | E12: shows the pipeline and gate work on a non-Cohere family. Never used for headline results. Labelled as supplementary in every table. |
+
+## 3. Pilot checks (E0): every model must pass before training
+
+1. Logit access for the "Yes" and "No" tokens (needed for P(True)). Record the exact token IDs.
+2. At least 95% format compliance with `ANSWER: ... | CONF: ...` or `ABSTAIN` on 50 items.
+3. At least 95% parser agreement with 50 hand-labelled items.
+4. Chat template recorded in the run config.
+5. License accepted on Hugging Face and model card text saved in the repo.
+
+A model that fails a check is swapped for another permitted Cohere model from section 1, and the failure is logged in `runs/RUN_LOG.md`.
+
+## 4. Publishing
+
+- Adapters built on a Cohere base carry CC BY-NC 4.0 and the Cohere Acceptable Use Policy on their model cards.
+- Collections are public and ungated (submission rule). Confirm with the organizers that public adapters on gated CC BY-NC bases are allowed. If not, publish code, configs, and predictions only.
+
+## 5. Verification status (fill in on the day)
 
 | Model | Card read | License confirmed | Size confirmed | Logits checked | Pilot E0 |
 |---|---|---|---|---|---|
-| tiny-aya-global | | | | | |
+| tiny-aya-global | | | yes (3.35B) | | |
 | tiny-aya-fire | | | | | |
+| tiny-aya-water | | | | | |
+| tiny-aya-earth | | | | | |
+| tiny-aya-base | | | | | |
 | aya-expanse-8b | | | | | |
-| c4ai-command-r7b-12-2024 | | | | | |
-| Qwen3-4B | | | | | |
-| SmolLM3-3B | | | | | |

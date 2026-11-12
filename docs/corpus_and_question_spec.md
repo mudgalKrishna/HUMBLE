@@ -1,12 +1,10 @@
-# Corpus and question specification
+# Corpus and question specification (v2)
 
-Status: pre-data. No documents or questions are generated until this spec is signed off by all three owners.
+Status: pre-data. Nothing is generated until all owners sign off.
 
 ## 1. Fact tables (source of truth)
 
-Each fictional organization is one row set in a fact table. Documents are rendered from the facts, and gold answers come from the facts, so labels are correct by construction.
-
-Fact fields (each org has all of them, values differ):
+Each fictional organization has one row in a fact table. Documents are rendered from the row with templates, and gold answers come from the same row, so labels are correct by construction. No LLM and no API are used.
 
 | Field | Type | Example values |
 |---|---|---|
@@ -18,76 +16,86 @@ Fact fields (each org has all of them, values differ):
 | delivery_days | int 1–14 | 3, 5, 7 |
 | contact_channel | enum | "email only", "phone and email" |
 
-Each organization is also assigned: org_id (ORG-0001 to ORG-0040), a sector name (fictional, e.g. "Northwind Outdoors"), and a fact_type list.
+Each organization also gets org_id (ORG-0001 to ORG-0044), a fictional sector name, and its own values for every field.
 
-## 2. Corpus size
+## 2. Corpus
 
-- 40 organizations, one policy document each.
-- Each document: 800–1,200 words.
-- Documents are rendered from templates (no LLM, no API).
-- Distractor sentences: 15–25 per document, drawn from a fixed pool of 60 irrelevant but plausible sentences.
+- 44 organizations, one policy document each (40 used for splits, 4 for robustness).
+- 800–1,200 words per document, rendered from the fact table with templates.
+- 15–25 distractor sentences per document, drawn from a fixed pool of 60 irrelevant but plausible sentences.
+- Documents are about 1,500 tokens, so the input limit is 2,048 tokens including the question.
 
-## 3. Question set
+## 3. Questions
 
-About 1,200 items total, split by organization.
+About **3,000** items (about 75 per organization):
 
 | Type | Share | Definition |
 |---|---|---|
-| answerable | 60% | The fact is stated in the document. Gold answer = the field value. |
-| unanswerable | 40% | The fact field is removed from the document, or the question asks about a product that does not exist in the corpus. Gold = abstain. |
+| answerable | 60% | The fact is stated in the document. Gold = field value. |
+| unanswerable | 40% | The field is removed from the document, or the question is about a product that does not exist in the corpus. Gold = ABSTAIN. |
 
-Question templates: 12 templates per fact type, numbered `T01`–`T12`. Each item stores its template_id.
+- 12 templates per fact type (T01–T12). Each item has a second surface wording (surface = "paraphrase").
+- Answerable and unanswerable questions use the **same templates**. The only difference is whether the fact is in the document.
 
-Paraphrase: each item has 2 surface forms (template and a second wording). Both are stored, same item_id, with a `surface` field added to the schema if needed.
+### 3.1 Shortcut guard (must pass before any training)
 
-## 4. Splits (locked before any training)
+Train a trivial classifier on the question text alone, with no document. Its accuracy at predicting answerability must be **at most 0.60**. If it is higher, the templates leak the label: fix the templates and regenerate.
 
-| Split | Organizations | Items | Use |
+## 4. Prompt setting
+
+- **Open-book (default):** the organization's full document is in the prompt, followed by the question.
+- **Closed-book fallback:** used only if E2 shows no CW increase for sft_naive by Nov 13 midday. Closed-book items are drawn from **training** organizations only, teaching facts the model must memorize (following the Gekhman et al. setup). The headline result must state which setting was used.
+
+## 5. Splits (locked before training)
+
+| Split | Organizations | Items (approx.) | Use |
 |---|---|---|---|
-| train | 24 (ORG-0001–0024) | ~720 | training methods |
-| val | 8 (ORG-0025–0032) | ~240 | choose thresholds, repair ratio, epochs |
-| test | 8 (ORG-0033–0040) | ~240 | locked; touched once for final results |
-| robustness | 4 extra orgs (ORG-0041–0044) | ~80 | decisive-edit and distractor tests (E10) |
+| train | ORG-0001–0024 | 1,800 | Training candidates |
+| val | ORG-0025–0032 | 600 | Thresholds, epochs, repair source |
+| test | ORG-0033–0040 | 600 | Locked; touched once for final results |
+| robustness | ORG-0041–0044 | 300 | Decisive-edit and distractor tests (Full) |
 
-Holdouts for generalization (E9): 2 question templates (T11, T12) are excluded from train and used in test only; 1 fact type (warranty_months) is excluded from train and used in test only.
+Holdouts for E9 (Full): templates T11 and T12, and fact type warranty_months, appear only in test.
 
 Rules:
-- Split is by organization. No document appears in two splits.
-- Test set hash is written to `humble/data/TEST_LOCK.txt` when created and must not change.
-- Any change to the split requires a logged reason in `runs/RUN_LOG.md`.
+- Split by organization, never by question.
+- The test set hash is written to `data/TEST_LOCK.txt` when created and must not change.
+- Any split change is logged in `runs/RUN_LOG.md` with a reason.
 
-## 5. Repair data (CuratorKIT, built only after the base checkpoint is evaluated)
+## 6. Repair data (built only after the blocked candidate is audited on val)
 
-- Source: val split only (never test).
-- Items where the checkpoint was confidently wrong.
-- Unanswerable share: 30% (sweep 0/15/30/50% in E5b).
-- Control: same number of items, random from the same generator, same unanswerable share.
+- Source: validation split only.
+- Items where the blocked checkpoint was confidently wrong, plus their paraphrases.
+- Targets: gold answer or ABSTAIN. Unanswerable share 30% (swept in E5b, Full).
+- Control: the same number of random ordinary items from the same generator, with the same unanswerable share, steps, and tokens.
 
-## 6. Robustness edits (E10, robustness split only)
+## 7. Robustness edits (E10, Full)
 
-- decisive_removed: delete the sentence that contains the gold answer. Gold becomes abstain.
+- decisive_removed: delete the sentence that contains the gold answer. Gold becomes ABSTAIN.
 - distractor_added: insert one irrelevant sentence from the pool. Gold stays the same.
 
-## 7. Output files
+## 8. Output files
 
 ```
-humble/data/
-  orgs.jsonl          fact tables (one org per line)
-  documents/          ORG-0001.md … ORG-0044.md
+data/
+  orgs.jsonl            fact tables, one org per line
+  documents/            ORG-0001.md … ORG-0044.md
   items_train.jsonl
   items_val.jsonl
-  items_test.jsonl    locked
+  items_test.jsonl      locked
   items_robust.jsonl
-  TEST_LOCK.txt       sha256 of items_test.jsonl
-  MANIFEST.json       counts per split, per type, per fact type
+  shortcut_guard.json   question-only classifier accuracy
+  TEST_LOCK.txt         sha256 of items_test.jsonl
+  MANIFEST.json         counts per split, per answerability, per fact type
 ```
 
-Every item record has: item_id, org_id, split, fact_type, question_type, template_id, question_text, gold_answer, document_hash, edit_type ("none" unless in robustness split).
+Each item record has: item_id, org_id, split, fact_type, question_type, template_id, surface, question_text, gold_answer, document_hash, edit_type.
 
-## 8. Acceptance checks (run after generation)
+## 9. Acceptance checks (after generation)
 
-1. No org appears in two splits.
+1. No organization appears in two splits.
 2. Answerable items: the gold answer string appears in the document.
 3. Unanswerable items: the field value does not appear in the document.
-4. Answer distribution per fact type is not degenerate (no field value above 40% of its type).
-5. Test lock hash matches.
+4. No single answer value exceeds 40% of its fact type.
+5. Shortcut guard accuracy ≤ 0.60.
+6. Test lock hash matches.
