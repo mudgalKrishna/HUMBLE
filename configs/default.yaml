@@ -1,0 +1,78 @@
+# HUMBLE default config. Every run copies this file and records its hash.
+# Change values only through a logged run (see docs/run_log_template.md).
+
+project:
+  name: humble
+  version: 0.1.0-spec
+
+data:
+  data_dir: data
+  corpus_orgs: 44
+  splits:
+    train: [ORG-0001, ORG-0024]
+    val: [ORG-0025, ORG-0032]
+    test: [ORG-0033, ORG-0040]
+    robustness: [ORG-0041, ORG-0044]
+  holdout_templates_test_only: [T11, T12]
+  holdout_fact_types_test_only: [warranty_months]
+  unanswerable_share: 0.30
+
+model:
+  base_id: CohereLabs/tiny-aya-global   # overridden per model in runs
+  revision: null                          # must be set to the commit hash before any run
+  chat_template: null                     # must be recorded before any run
+  dtype: bfloat16
+
+generation:
+  temperature_greedy: 0.0
+  temperature_sampling: 0.7
+  n_samples: 10
+  max_new_tokens: 64
+  answer_format: "ANSWER: <text> | CONF: <0-100>  or  ABSTAIN"
+
+confidence:
+  primary: ptrue            # ptrue | verbalized | sampling
+  ptrue_prompt: "Is this answer correct? Answer Yes or No."
+  tau: 0.8                  # confident = ptrue >= tau
+
+knowledge:
+  agreement_threshold: 0.7  # sample_agreement >= this and majority correct => knows
+
+metrics:
+  coverage_for_selective_accuracy: 0.8
+  ece_bins: 10
+  bootstrap_resamples: 1000
+  ci_level: 0.95
+  seeds_final: [1, 2, 3]
+
+gate:
+  delta_cw: 0.02            # G1: CW(candidate) <= CW(original) - delta
+  eps_selective_acc: 0.02   # G2: selective_acc(candidate) >= original - eps
+  max_abstention_increase: 0.05  # G3: abstention(candidate) <= original + this
+  # G4: ECE(candidate) <= ECE(original)
+
+training:
+  method: sft               # sft | dpo | kto | orpo | grpo
+  lora:
+    rank: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules: [q_proj, k_proj, v_proj, o_proj]
+  max_seq_len: 1024
+  epochs: 2
+  learning_rate: 2.0e-4     # SFT start value; tune on val only
+  dpo_beta: 0.1
+  dpo_learning_rate: 5.0e-6 # start value; tune on val only
+  token_budget: null        # set once for all methods; must be identical across methods
+  batch_size: 8
+  grad_accum: 2
+
+compute:
+  gpu: RTX 6000 96GB
+  max_wall_clock_hours_per_run: 1
+  max_vram_gb: 90
+
+reproducibility:
+  seeds: [1, 2, 3]
+  deterministic: true
+  log_package_versions: true
