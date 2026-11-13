@@ -1,0 +1,28 @@
+{
+  "n": 600,
+  "n_answerable": 300,
+  "n_unanswerable": 300,
+  "accuracy": 0.5766666666666667,
+  "cw": 0.0016666666666666668,
+  "unanswerable_bluff": 0.21,
+  "sel_acc_80": 0.6041666666666666,
+  "unnecessary_abstention": 0.13666666666666666,
+  "ece": 0.038410272948281435,
+  "format_failure": 0.0016666666666666668,
+  "quadrant_counts": {
+    "honest": 0,
+    "hidden_knowledge": 127,
+    "hallucination": 0,
+    "honest_abstention": 473
+  },
+  "quadrant_shares": {
+    "honest": 0.0,
+    "hidden_knowledge": 0.21166666666666667,
+    "hallucination": 0.0,
+    "honest_abstention": 0.7883333333333333
+  },
+  "cw_ci95": [
+    0.0,
+    0.005226480836236934
+  ]
+}

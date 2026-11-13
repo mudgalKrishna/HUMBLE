@@ -186,3 +186,113 @@ def lambda_val(target, log=None):
     (R.RUNS / "lambda_scaled" / "choice.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     R.sync_up(R.RUNS / "lambda_scaled" / "choice.json", "runs/lambda_scaled/choice.json")
     return summary
+
+
+# ---- real-text iteration: train on SQuAD 2.0 train paragraphs, test once on a fresh validation sample ----
+REAL = R.BASE / "real"
+
+
+def real_build(log=None):
+    """Build the real-text dataset in a notebook that has HF access. Excludes the external-check items and paragraphs."""
+    from . import real
+    ext_items = [json.loads(l) for l in (R.BASE / "external" / "items_external.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    ext_ids = [it["item_id"] for it in ext_items]
+    ext_ctx = [(R.BASE / "external" / "documents" / it["document_file"]).read_text(encoding="utf-8") for it in ext_items]
+    REAL.mkdir(parents=True, exist_ok=True)
+    manifest = real.build(REAL, exclude_item_ids=ext_ids, exclude_contexts=ext_ctx)
+    R.sync_up(REAL, "real")
+    return manifest
+
+
+def real_train_eval(candidate, seed=1, log=None):
+    """Train on real train items (naive: answerable only; honest: includes unanswerable -> ABSTAIN), then the once-only real test."""
+    method_honest = candidate == "sft_honest"
+    name = f"real_{candidate}" if seed == 1 else f"real_{candidate}_s{seed}"
+    adapter_dir = R.ADAPTERS / name
+    if not (adapter_dir / "adapter_config.json").exists():
+        tok, base = load_base(R.MODEL)
+        model = new_lora_model(base)
+        items = [json.loads(l) for l in (REAL / "items_real_train.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+        examples = sft_examples(items, REAL / "documents", method_honest)
+        train_sft(model, tok, examples, adapter_dir, seed=seed, log=log)
+        R.sync_up(adapter_dir, f"adapters/{name}")
+        _free(model, base)
+    return real_test(name, adapter_dir, log=log)
+
+
+def real_test(name, adapter_dir=None, log=None):
+    """Once-only evaluation on the real test sample. Same lock rule as the synthetic test set."""
+    marker = R.RUNS / name / "real_test" / "DONE"
+    if marker.exists():
+        raise RuntimeError(f"real test already evaluated for {name}; locked")
+    tok, model = load_base(R.MODEL)
+    if adapter_dir:
+        model = load_adapter(model, adapter_dir)
+    model.eval()
+    items = [json.loads(l) for l in (REAL / "items_real_test.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    recs, metrics = audit_split(model, tok, items, REAL / "documents", run_id=name, candidate=name,
+                                out_dir=R.RUNS / name / "real_test", log=log)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("locked-after-single-evaluation\n", encoding="utf-8")
+    _free(model)
+    R.sync_up(R.RUNS / name / "real_test", f"runs/{name}/real_test")
+    return metrics
+
+
+# ---- real-text fix: sweep the unanswerable share, choose on real VAL, test once ----
+def _read_items(path):
+    return [json.loads(l) for l in Path(path).read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def real_sweep(share, seed=1, log=None):
+    """SFT-honest on real text with a given unanswerable share; audited on the real validation split only."""
+    name = f"realsw_u{int(round(share * 100)):02d}_s{seed}"
+    adapter_dir = R.ADAPTERS / name
+    if not (adapter_dir / "adapter_config.json").exists():
+        items = _read_items(REAL / "items_real_train.jsonl")
+        ans = [it for it in items if it["question_type"] == "answerable"]
+        un = [it for it in items if it["question_type"] == "unanswerable"]
+        n_u = min(len(un), int(round(len(ans) * share / (1 - share))))
+        chosen = ans + random.Random(seed).sample(un, n_u)
+        tok, base = load_base(R.MODEL)
+        model = new_lora_model(base)
+        train_sft(model, tok, sft_examples(chosen, REAL / "documents", True), adapter_dir, seed=seed, log=log)
+        R.sync_up(adapter_dir, f"adapters/{name}")
+        _free(model, base)
+    tok, model = load_base(R.MODEL)
+    model = load_adapter(model, adapter_dir)
+    model.eval()
+    recs, metrics = audit_split(model, tok, _read_items(REAL / "items_real_val.jsonl"), REAL / "documents",
+                                run_id=name, candidate=name, out_dir=R.RUNS / name / "real_val", log=log)
+    _free(model)
+    R.sync_up(R.RUNS / name / "real_val", f"runs/{name}/real_val")
+    return {k: metrics[k] for k in ("accuracy", "unanswerable_bluff", "unnecessary_abstention", "cw")}
+
+
+def real_val_original(log=None):
+    tok, model = load_base(R.MODEL)
+    model.eval()
+    recs, metrics = audit_split(model, tok, _read_items(REAL / "items_real_val.jsonl"), REAL / "documents",
+                                run_id="real_original", candidate="real_original",
+                                out_dir=R.RUNS / "real_original" / "real_val", log=log)
+    _free(model)
+    R.sync_up(R.RUNS / "real_original" / "real_val", "runs/real_original/real_val")
+    return {k: metrics[k] for k in ("accuracy", "unanswerable_bluff", "unnecessary_abstention", "cw")}
+
+
+def real_final(share, seed, log=None):
+    """Chosen setting on the locked real test: train SFT-honest exactly like real_sweep, then evaluate once."""
+    name = f"realfinal_u{int(round(share * 100)):02d}_s{seed}"
+    adapter_dir = R.ADAPTERS / name
+    if not (adapter_dir / "adapter_config.json").exists():
+        items = _read_items(REAL / "items_real_train.jsonl")
+        ans = [it for it in items if it["question_type"] == "answerable"]
+        un = [it for it in items if it["question_type"] == "unanswerable"]
+        n_u = min(len(un), int(round(len(ans) * share / (1 - share))))
+        chosen = ans + random.Random(seed).sample(un, n_u)
+        tok, base = load_base(R.MODEL)
+        model = new_lora_model(base)
+        train_sft(model, tok, sft_examples(chosen, REAL / "documents", True), adapter_dir, seed=seed, log=log)
+        R.sync_up(adapter_dir, f"adapters/{name}")
+        _free(model, base)
+    return real_test(name, adapter_dir, log=log)
