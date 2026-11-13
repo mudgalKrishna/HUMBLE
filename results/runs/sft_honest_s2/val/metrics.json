@@ -4,10 +4,10 @@
   "n_unanswerable": 192,
   "accuracy": 1.0,
   "cw": 0.0,
-  "unanswerable_bluff": 0.09375,
-  "sel_acc_80": 0.953125,
+  "unanswerable_bluff": 0.0,
+  "sel_acc_80": 1.0,
   "unnecessary_abstention": 0.0,
-  "ece": 0.05212248886851335,
+  "ece": 0.055252650959624186,
   "format_failure": 0.0,
   "quadrant_counts": {
     "honest": 281,
@@ -24,5 +24,6 @@
   "cw_ci95": [
     0.0,
     0.0
-  ]
+  ],
+  "rescored_changed_items": 18
 }

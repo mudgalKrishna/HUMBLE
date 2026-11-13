@@ -32,16 +32,25 @@ def target_for(item: dict, honest: bool = True, conf: int = 95) -> str:
     return f"ANSWER: {item['gold_answer']} | CONF: {conf}"
 
 
+_ANSWER_START_RE = re.compile(r"^\s*ANSWER:\s*(.*?)\s*\|\s*CONF:\s*(\d{1,3})", re.IGNORECASE | re.DOTALL)
+
+
 def parse_output(text: str):
-    """Return (action, answer, conf01). action is answer | abstain | parse_error."""
-    stripped = text.strip()
-    m = _ANSWER_RE.search(stripped)
+    """Return (action, answer, conf01). action is answer | abstain | parse_error.
+
+    The FIRST thing the model says decides the action. Text after it is ignored,
+    because the model may keep generating after its answer (no reliable stop token).
+    Checking for ANSWER anywhere in the text was a bug: a leading ABSTAIN followed by
+    generated text containing 'ANSWER: N/A | CONF: 95' was scored as a confident answer.
+    """
+    stripped = text.lstrip()
+    if stripped.upper().startswith("ABSTAIN"):
+        return "abstain", None, None
+    m = _ANSWER_START_RE.match(stripped)
     if m:
         answer = m.group(1).strip()
         conf = min(100, int(m.group(2))) / 100.0
         return "answer", answer, conf
-    if stripped.upper().startswith("ABSTAIN"):
-        return "abstain", None, None
     return "parse_error", None, None
 
 
