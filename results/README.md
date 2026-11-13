@@ -88,6 +88,33 @@ Training on template documents did not transfer: on real SQuAD 2.0 questions, th
 
 **Limits.** One model (Tiny Aya Global), 300 real training questions, three seeds. Over-refusal still varies by seed (8%-29%), and about 1 in 5 real unanswerable questions is still answered. Generalization to other models is untested.
 
+
+## Iteration 2 (Tiny Aya Global): more real data
+
+**What changed.** A fresh real-text split was built from SQuAD 2.0 questions never used before: a 4,000-question training pool (2,000 answerable), a validation split (val2, 600) and a locked test (test2, 600). val2 and test2 share no paragraph with each other, with the training pool, or with any earlier split. Audits now sample every question and stop generation on both end tokens (the stop-token fix).
+
+**What was compared (on val2, 3 seeds each).** Training size 300 / 1,000 / 2,000 answerable questions (30% unanswerable share) x an agreement-abstention threshold (off, or 0.3-0.9: abstain when the model's samples don't back its greedy answer).
+
+**Rule (fixed before results).** Lowest mean score = bluff + unnecessary abstention; eligible only if accuracy >= original - 0.02; ties go to the simpler setting. Chosen: **2,000 questions, agreement rule off** (val2 score 0.293, seed range 0.277-0.303; original 0.687).
+
+**Negative result.** The agreement rule never helped: at every size, raising the threshold cut bluffing but raised over-refusal by more, so the score got worse.
+
+**Locked test2 (evaluated once per run).**
+
+| Run | Accuracy | Unanswerable bluff | Unnecessary abstention | Score |
+|---|---|---|---|---|
+| Original | 0.500 | 0.653 | 0.010 | 0.663 |
+| 2,000 questions, seed 21 | 0.513 | 0.053 | 0.273 | 0.327 |
+| 2,000 questions, seed 22 | 0.613 | 0.083 | 0.163 | 0.247 |
+| 2,000 questions, seed 23 | 0.557 | 0.070 | 0.253 | 0.323 |
+| **Mean** | **0.561** | **0.069** | **0.230** | **0.299** |
+
+**Verdict (rule fixed in advance): iteration 2 holds.** Mean score 0.299 against 0.663; mean accuracy 0.561 against 0.500; every seed beats the original. Bluffing on real unanswerable questions falls from 65% to 7%.
+
+**Compared with iteration 1** (different test sets, so only roughly comparable): iteration 1 cut the score from 0.710 to 0.366 (-48%); iteration 2 cuts it from 0.663 to 0.299 (-55%), with far less bluffing (7% vs 20%).
+
+**Limits.** Over-refusal on test2 (23%) is higher than on val2 (11%), so some answerable questions are still refused. One model only (Tiny Aya Global). Three seeds per setting.
+
 ## Deviations from the spec
 
 - 2,720 items instead of about 3,000; train split has 1,440 items instead of 1,800.

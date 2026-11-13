@@ -296,3 +296,81 @@ def real_final(share, seed, log=None):
         R.sync_up(adapter_dir, f"adapters/{name}")
         _free(model, base)
     return real_test(name, adapter_dir, log=log)
+
+
+# ---- iteration 2 on Tiny Aya Global: bigger real data, agreement abstention, stop-token fix ----
+REAL2 = R.BASE / "real2"
+
+
+def _eos_ids(model, tok):
+    g = model.generation_config.eos_token_id
+    ids = set(g if isinstance(g, (list, tuple)) else [g])
+    ids.add(tok.eos_token_id)
+    return sorted(i for i in ids if i is not None)
+
+
+def real2_build(log=None):
+    """Bigger train pool plus fresh val2/test2 that exclude everything used before. Publishes a single archive."""
+    import tarfile
+    from . import real
+    manifest = real.build_v2(REAL2, used_dirs=[REAL, R.BASE / "external"])
+    bundle = R.BASE / "real2_bundle.tar.gz"
+    with tarfile.open(bundle, "w:gz") as t:
+        t.add(REAL2, arcname="real2")
+    R.sync_up(bundle, "bundles/real2_bundle.tar.gz")
+    return manifest
+
+
+def _train_real2(size, seed, name, share=0.30):
+    adapter_dir = R.ADAPTERS / name
+    if not (adapter_dir / "adapter_config.json").exists():
+        items = _read_items(REAL2 / "items_train2.jsonl")
+        ans = [it for it in items if it["question_type"] == "answerable"]
+        un = [it for it in items if it["question_type"] == "unanswerable"]
+        ans = random.Random(seed).sample(ans, min(size, len(ans)))
+        n_u = min(len(un), int(round(len(ans) * share / (1 - share))))
+        chosen = ans + random.Random(seed + 1000).sample(un, n_u)
+        tok, base = load_base(R.MODEL)
+        model = new_lora_model(base)
+        train_sft(model, tok, sft_examples(chosen, REAL2 / "documents", True), adapter_dir, seed=seed)
+        R.sync_up(adapter_dir, f"adapters/{name}")
+        _free(model, base)
+    return adapter_dir
+
+
+def _audit_real2(name, adapter_dir, split, log=None):
+    tok, model = load_base(R.MODEL)
+    if adapter_dir:
+        model = load_adapter(model, adapter_dir)
+    model.eval()
+    recs, metrics = audit_split(model, tok, _read_items(REAL2 / f"items_{split}.jsonl"), REAL2 / "documents",
+                                run_id=name, candidate=name, out_dir=R.RUNS / name / split, log=log,
+                                sample_all=True, eos_ids=_eos_ids(model, tok))
+    _free(model)
+    R.sync_up(R.RUNS / name / split, f"runs/{name}/{split}")
+    return {k: metrics[k] for k in ("accuracy", "unanswerable_bluff", "unnecessary_abstention")}
+
+
+def real2_val(size, seed, log=None):
+    name = f"r2_n{size}_s{seed}"
+    return _audit_real2(name, _train_real2(size, seed, name), "val2", log=log)
+
+
+def real2_val_original(log=None):
+    return _audit_real2("r2_original", None, "val2", log=log)
+
+
+def real2_test(name, adapter_dir=None, log=None):
+    marker = R.RUNS / name / "test2" / "DONE"
+    if marker.exists():
+        raise RuntimeError(f"test2 already evaluated for {name}; locked")
+    m = _audit_real2(name, adapter_dir, "test2", log=log)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("locked-after-single-evaluation\n", encoding="utf-8")
+    R.sync_up(marker, f"runs/{name}/test2/DONE")
+    return m
+
+
+def real2_final(size, seed, log=None):
+    name = f"r2final_n{size}_s{seed}"
+    return real2_test(name, _train_real2(size, seed, name), log=log)

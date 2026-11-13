@@ -109,3 +109,57 @@ def build_val(out_dir, real_dir, n_each=150, seed=SEED + 1):
     (real_dir / "items_real_val.jsonl").write_text(
         "\n".join(json.dumps(x, ensure_ascii=False) for x in rows) + "\n", encoding="utf-8")
     return {"val": len(rows), "val_answerable": n_each}
+
+
+def build_v2(out_dir, used_dirs, n_train_ans=2000, n_train_un=2000, n_val_each=300, n_test_each=300, seed=SEED + 2):
+    """Iteration 2: bigger real train pool plus FRESH val2 and test2.
+
+    val2 and test2 exclude every question id and paragraph used anywhere before (external check,
+    real test, real val, real train), and share no paragraph with the new training pool or each other.
+    """
+    import pandas as pd
+    out = Path(out_dir)
+    (out / "documents").mkdir(parents=True, exist_ok=True)
+    used_ids, used_ctx = set(), set()
+    for d in used_dirs:
+        d = Path(d)
+        for f in d.glob("items_*.jsonl"):
+            for line in f.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    it = json.loads(line)
+                    raw = it["item_id"].split("-", 1)[1] if it["item_id"].startswith(("rtr-", "rte-", "rva-")) else it["item_id"]
+                    used_ids.add(raw)
+                    doc = d / "documents" / it["document_file"]
+                    if doc.exists():
+                        used_ctx.add(doc.read_text(encoding="utf-8"))
+    train_df = _load_squad("train-00000-of-00001.parquet")
+    val_df = _load_squad("validation-00000-of-00001.parquet")
+    val_df = val_df[~val_df["id"].isin(used_ids) & ~val_df["context"].isin(used_ctx)]
+    train_df = train_df[~train_df["context"].isin(set(val_df["context"]))]
+    # split validation paragraphs into two disjoint halves so val2 and test2 never share a paragraph
+    ctxs = sorted(set(val_df["context"]))
+    import random as _r
+    _r.Random(seed).shuffle(ctxs)
+    half = set(ctxs[: len(ctxs) // 2])
+    v_df, t_df = val_df[val_df["context"].isin(half)], val_df[~val_df["context"].isin(half)]
+
+    def take(df, n_a, n_u, s):
+        return pd.concat([df[~df["unans"]].sample(n=n_a, random_state=s), df[df["unans"]].sample(n=n_u, random_state=s)])
+
+    parts = {"train2": (take(train_df, n_train_ans, n_train_un, seed), "r2tr"),
+             "val2": (take(v_df, n_val_each, n_val_each, seed), "r2va"),
+             "test2": (take(t_df, n_test_each, n_test_each, seed), "r2te")}
+    manifest = {}
+    for split, (df, prefix) in parts.items():
+        rows = []
+        for _, r in df.iterrows():
+            doc_id = hashlib.sha256(r["context"].encode("utf-8")).hexdigest()[:12]
+            (out / "documents" / f"{doc_id}.md").write_text(r["context"], encoding="utf-8")
+            rows.append(_item(r, doc_id, split, prefix))
+        (out / f"items_{split}.jsonl").write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in rows) + "\n", encoding="utf-8")
+        manifest[split] = {"n": len(rows), "answerable": sum(x["question_type"] == "answerable" for x in rows)}
+    lock = hashlib.sha256((out / "items_test2.jsonl").read_bytes()).hexdigest()
+    (out / "TEST2_LOCK.txt").write_text(lock + "\n", encoding="utf-8")
+    manifest["test2_lock_sha256"] = lock
+    (out / "MANIFEST2.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return manifest

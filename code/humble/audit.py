@@ -29,7 +29,7 @@ def _yes_no_ids(tok):
 
 
 @torch.no_grad()
-def greedy_answers(model, tok, user_texts, max_new=40, batch=8):
+def greedy_answers(model, tok, user_texts, max_new=40, batch=8, eos_ids=None):
     tok.padding_side = "left"
     outs = []
     for i in range(0, len(user_texts), batch):
@@ -38,7 +38,7 @@ def greedy_answers(model, tok, user_texts, max_new=40, batch=8):
                                          add_generation_prompt=True) for u in chunk]
         enc = tok(texts, add_special_tokens=False, return_tensors="pt", padding=True).to("cuda")
         gen = model.generate(**enc, max_new_tokens=max_new, do_sample=False,
-                             pad_token_id=tok.pad_token_id)
+                             pad_token_id=tok.pad_token_id, **({"eos_token_id": eos_ids} if eos_ids else {}))
         for row in gen[:, enc["input_ids"].shape[1]:]:
             outs.append(tok.decode(row, skip_special_tokens=True).strip())
     return outs
@@ -59,10 +59,11 @@ def build_ptrue_prompt_from_user(user_text, answer):
 
 
 @torch.no_grad()
-def samples_for(model, tok, user_text, n=N_SAMPLES, temp=SAMPLE_TEMP, max_new=40):
+def samples_for(model, tok, user_text, n=N_SAMPLES, temp=SAMPLE_TEMP, max_new=40, eos_ids=None):
     enc = _chat(tok, user_text)
     gen = model.generate(**enc, max_new_tokens=max_new, do_sample=True, temperature=temp,
-                         top_p=1.0, num_return_sequences=n, pad_token_id=tok.pad_token_id)
+                         top_p=1.0, num_return_sequences=n, pad_token_id=tok.pad_token_id,
+                         **({"eos_token_id": eos_ids} if eos_ids else {}))
     texts = [tok.decode(r[enc["input_ids"].shape[1]:], skip_special_tokens=True) for r in gen]
     parsed = []
     for t in texts:
@@ -71,14 +72,14 @@ def samples_for(model, tok, user_text, n=N_SAMPLES, temp=SAMPLE_TEMP, max_new=40
     return parsed
 
 
-def audit_split(model, tok, items, docs_dir, run_id, candidate, out_dir, log=None):
+def audit_split(model, tok, items, docs_dir, run_id, candidate, out_dir, log=None, sample_all=False, eos_ids=None):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     user_texts = []
     for it in items:
         doc = (docs_dir / it["document_file"]).read_text(encoding="utf-8")
         user_texts.append(build_user_prompt(doc, it["question_text"]))
-    greedy = greedy_answers(model, tok, user_texts)
+    greedy = greedy_answers(model, tok, user_texts, eos_ids=eos_ids)
     records = []
     for idx, (it, ut, raw) in enumerate(zip(items, user_texts, greedy)):
         action, answer, verbal = parse_output(raw)
@@ -88,13 +89,14 @@ def audit_split(model, tok, items, docs_dir, run_id, candidate, out_dir, log=Non
         if action == "answer":
             conf = ptrue(model, tok, ut, answer)
             correct = is_correct(answer, gold)
-        samples = samples_for(model, tok, ut) if it["question_type"] == "answerable" else []
+        samples = samples_for(model, tok, ut, eos_ids=eos_ids) if (sample_all or it["question_type"] == "answerable") else []
         majority, agreement, knows = None, None, False
         if samples:
             top, cnt = Counter(samples).most_common(1)[0]
+            # agreement over all samples (used by the agreement-abstention rule); knows stays answerable-only
             majority = top
             agreement = cnt / len(samples)
-            maj_correct = (top not in ("ABSTAIN", "PARSE_ERROR")) and is_correct(top, gold)
+            maj_correct = (top not in ("ABSTAIN", "PARSE_ERROR")) and gold is not None and is_correct(top, gold)
             knows = bool(maj_correct and agreement >= AGREEMENT)
         records.append({
             "run_id": run_id, "candidate": candidate, "split": it["split"], "item_id": it["item_id"],
