@@ -1,0 +1,131 @@
+# HUMBLE v3 results (CohereLabs/aya-expanse-8b)
+
+All numbers are percentages unless marked; computed from saved `predictions.jsonl` files. Prudence = ABSTAIN on unanswerable probes; over-conservativeness = ABSTAIN on probes the original answered correctly; cost uses the `support` profile weights (2/2/2). Test = locked test, evaluated once per model.
+
+## E-REPAIR on the SQuAD-derived RAG probes (test)
+
+| Model | Accuracy | Prudence | Over-cons. | Unnec. abstention | Honesty | Cost | U5 echo |
+|---|---|---|---|---|---|---|---|
+| Original | 23.0 (18.2–27.6) | 10.5 (7.7–13.6) | 0.0 | 0.0 | 55.2 | 3.33 | 4.0 |
+| Naive SFT s31 (blocked) | 75.3 (70.6–79.9) | 0.0 (0.0–0.0) | 0.0 | 0.0 | 50.0 | 2.49 | 54.0 |
+| A HUMBLE repair loop (n=3) | 75.7 ± 0.3 | 82.8 ± 0.4 | 0.0 ± 0.0 | 0.3 ± 0.0 | 91.4 ± 0.2 | 0.82 ± 0.01 | 42.0 ± 0.0 |
+| B random control (n=3) | 74.8 ± 0.2 | 88.0 ± 0.7 | 0.0 ± 0.0 | 0.3 ± 0.0 | 94.0 ± 0.4 | 0.74 ± 0.01 | 32.0 ± 4.0 |
+| C prevention (n=1) | 72.7 | 82.0 | 2.9 | 3.0 | 89.6 | 0.90 | 30.0 |
+
+## E-REPAIR on the SQuAD-derived RAG probes (val)
+
+| Model | Accuracy | Prudence | Over-cons. | Unnec. abstention | Honesty | Cost | U5 echo |
+|---|---|---|---|---|---|---|---|
+| Original | 28.3 (23.4–33.2) | 17.5 (14.1–21.1) | 0.0 | 0.0 | 58.7 | 3.08 | 7.1 |
+| Naive SFT s31 (blocked) | 81.7 (77.0–86.3) | 0.0 (0.0–0.0) | 0.0 | 0.0 | 50.0 | 2.37 | 64.3 |
+| A HUMBLE repair loop (n=3) | 81.8 ± 0.4 | 86.5 ± 1.2 | 0.0 ± 0.0 | 0.0 ± 0.0 | 93.2 ± 0.6 | 0.64 ± 0.02 | 39.7 ± 1.4 |
+| B random control (n=3) | 81.8 ± 0.4 | 91.1 ± 0.2 | 0.0 ± 0.0 | 0.2 ± 0.2 | 95.5 ± 0.1 | 0.54 ± 0.01 | 31.0 ± 2.4 |
+| C prevention (n=1) | 78.7 | 84.7 | 1.2 | 2.0 | 91.7 | 0.72 | 42.9 |
+
+## Gate decisions (val, profile `support`)
+
+| Candidate | Decision | Failed rules |
+|---|---|---|
+| naive_s31 | BLOCK | G1, G4 |
+| repA_s31_r1 | PASS | – |
+| repA_s32_r1 | PASS | – |
+| repA_s33_r1 | PASS | – |
+
+## Gate decisions on the locked test (certificates, profile `support`)
+
+| Candidate | Decision | Failed rules |
+|---|---|---|
+| ctlB_s31_r1 | PASS | – |
+| naive_s31 | BLOCK | G1, G4 |
+| prevC_s31 | PASS | – |
+| repA_s31_r1 | PASS | – |
+
+## Arm D: lambda scaling of the blocked adapter (val)
+
+| lambda | Gate | Accuracy | Prudence |
+|---|---|---|---|
+
+## E-CAT: prudence by unanswerable category (test)
+
+| Model | U1 missing | U2 out of DB | U3 false premise | U4 underspecified | U5 misleading |
+|---|---|---|---|---|---|
+| Original | 11.5 | 23.0 | 3.0 | 0.0 | 2.0 |
+| Naive s31 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| A s31 | 92.5 | 95.0 | 82.0 | 42.9 | 42.0 |
+| A s32 | 90.5 | 95.0 | 84.0 | 46.4 | 42.0 |
+| A s33 | 90.0 | 97.0 | 85.0 | 46.4 | 46.0 |
+| C s31 | 81.5 | 98.0 | 98.0 | 28.6 | 50.0 |
+
+## E-LANG: XQuAD (es, hi, ar), evaluation only
+
+| Model | Accuracy | Prudence | Over-cons. | Unnec. abstention | Honesty | Cost | U5 echo |
+|---|---|---|---|---|---|---|---|
+
+## E-DOMAIN: CUAD contracts, evaluation only
+
+| Model | Accuracy | Prudence | Over-cons. | Unnec. abstention | Honesty | Cost | U5 echo |
+|---|---|---|---|---|---|---|---|
+
+With judge grading of long answers (M9):
+
+| Model | Accuracy (F1 only) | Accuracy (judge) |
+|---|---|---|
+
+## Product mode: probes generated from a fictional company's 44 policy documents
+
+| Model | Accuracy | Prudence | Over-cons. | Unnec. abstention | Honesty | Cost | U5 echo |
+|---|---|---|---|---|---|---|---|
+
+## Hypotheses (pre-registered)
+
+| ID | Claim | Verdict |
+|---|---|---|
+| H1 | Naive fine-tuning lowers prudence vs the original (multi-passage RAG) | supported |
+| H2 | P(True)-based confident-wrong fails to detect H1 | supported |
+| H3 | Repair loop A lowers cost more than random control B (every seed, paired CI excludes 0) | not supported |
+| H4 | A has lower over-conservativeness than prevention C (every seed) | not supported |
+| H5 | Gate self-controls behave as expected | see E-GATE |
+| H6 | Bluffing differs by category; misleading evidence (U5) is hardest | partly: hardest is U4 |
+| H7 | Repair gains transfer to an unseen domain (CUAD) without retraining | see E-DOMAIN |
+| H8 | Same recipe works on other permitted Cohere models | not run (scope: one model first, by instruction) |
+
+Paired differences on the locked test (document-clustered bootstrap, 1,000 resamples):
+
+| Comparison | Metric | Diff | 95% CI | Significant |
+|---|---|---|---|---|
+| A_vs_B_s31 | cost | +0.082 | +0.028 … +0.139 | True |
+| A_vs_B_s31 | prudence | -0.054 | -0.076 … -0.034 | True |
+| A_vs_B_s31 | over_conservativeness | +0.000 | +0.000 … +0.000 | False |
+| A_vs_B_s31 | accuracy | +0.013 | -0.003 … +0.032 | False |
+| A_vs_C_s31 | cost | -0.084 | -0.208 … +0.023 | False |
+| A_vs_C_s31 | prudence | +0.006 | -0.027 … +0.041 | False |
+| A_vs_C_s31 | over_conservativeness | -0.029 | -0.072 … +0.000 | False |
+| A_vs_C_s31 | accuracy | +0.033 | +0.007 … +0.061 | True |
+| A_vs_B_s32 | cost | +0.083 | +0.027 … +0.140 | True |
+| A_vs_B_s32 | prudence | -0.048 | -0.068 … -0.030 | True |
+| A_vs_B_s32 | over_conservativeness | +0.000 | +0.000 … +0.000 | False |
+| A_vs_B_s32 | accuracy | +0.007 | -0.013 … +0.025 | False |
+| A_vs_B_s33 | cost | +0.095 | +0.044 … +0.151 | True |
+| A_vs_B_s33 | prudence | -0.054 | -0.079 … -0.034 | True |
+| A_vs_B_s33 | over_conservativeness | +0.000 | +0.000 … +0.000 | False |
+| A_vs_B_s33 | accuracy | +0.007 | -0.007 … +0.021 | False |
+| naive_vs_original | prudence | -0.105 | -0.136 … -0.076 | True |
+| naive_vs_original | accuracy | +0.523 | +0.465 … +0.590 | True |
+| naive_vs_original | cost | -0.837 | -0.979 … -0.704 | True |
+
+
+## Run notes (Aya Expanse 8B)
+
+* Scope: Krishna's recipe for this model (original, naive s31, A and B seeds 31–33 from `naive_s31`, C seed 31,
+  certificates, summary). Arm D, E-LANG, E-DOMAIN and product mode were not run for this model, so those tables are empty.
+* Hardware: one NVIDIA RTX PRO 6000 Blackwell (96 GB). env_check: stop token `<|END_OF_TURN_TOKEN|>` (id 255001),
+  matching the chat template's end of turn. Test lock `78c6540b174a4626` verified before the runs.
+* **Strict accuracy under-counts the original model.** The original Aya Expanse 8B answers in full sentences
+  (e.g. gold `four`, answer "Tennessee has carried Democratic presidential candidates only four times since the 1950s."),
+  so F1 ≥ 0.8 against the short gold marks most correct answers wrong. On val, the share of answerable items whose
+  gold answer appears in the model's answer is 89.3% for the original (strict: 28.3%) and 84.7% for naive s31
+  (strict: 81.7%). So the +52-point "accuracy gain" from fine-tuning is mostly the short answer format, and the
+  naive model's lower cost than the original comes from the same artifact. Prudence, bluffing and every gate decision
+  are unaffected (they depend only on ANSWER vs ABSTAIN), but over-conservativeness is computed on the items the original
+  answered correctly under strict scoring (85 of 300 on val), so it rests on fewer items than for Tiny Aya.
+* The original model already bluffs heavily: test prudence 10.5% (Tiny Aya Global: 40.2%).
