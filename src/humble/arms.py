@@ -152,13 +152,17 @@ def arm_A(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
                                               for h in history]}
 
 
-def arm_B(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support"):
-    """Random control matched to arm A's rounds, sizes, target ratio, replay and steps."""
+def arm_B(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support", tag="B", match="A"):
+    """Random control matched to arm `match`'s rounds, sizes, target ratio, replay and steps.
+    Defaults reproduce the published names (armB_s<seed>.json, ctlB_s<seed>_r<n>); a new experiment sets its own
+    tag (e.g. tag="Blight", match="Alight") so it never overwrites those files."""
     from . import gate as G, repair as R
     from .config import profile as get_profile
     prof = get_profile(profile, cfg())
-    hub.pull([f"v3/arms/armA_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
-    a = json.loads((path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"armA_s{seed}.json").read_text())
+    hub.pull([f"v3/arms/arm{match}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
+    a = json.loads((path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{match}_s{seed}.json").read_text())
+    if a.get("blocked", blocked) != blocked:
+        raise ValueError(f"arm{match}_s{seed} repaired {a.get('blocked')}, not {blocked}: the control must start from the same adapter")
     pdir, probe, corpus, replay, wp = _repair_context(probe_set)
     orig_val = _get_preds(probe_set, "original", "val")
     K = G.known_ids(orig_val)
@@ -167,7 +171,7 @@ def arm_B(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
     current, hist, name = _get_adapter(blocked), [], blocked
     for h in [h for h in a["rounds"] if "targets" in h]:
         t = h["targets"]
-        name = f"ctlB_s{seed}_r{h['round']}"
+        name = f"ctl{tag}_s{seed}_r{h['round']}"
         ex, counts = R.random_control(t["abstain"], t["answer"], probe, rng, replay, t["replay"])
         adir, cs, info = _sft_repair(ex, name, current, seed, J)
         current = adir
@@ -175,9 +179,9 @@ def arm_B(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
     vrecs, vm = _val_audit(probe_set, name, current, K, w, J, seed)
     g = G.evaluate(orig_val, vrecs, prof)
     G.write(g, _audit_dir(probe_set, name, "val") / f"gate_{prof['name']}.json")
-    res = {"arm": "B", "seed": seed, "final": name, "rounds": hist, "gate": g["decision"], "failed_rules": g["failed_rules"]}
-    R.save_json(res, path("adapters", cfg()) / f"armB_s{seed}.json")
-    hub.push(path("adapters", cfg()) / f"armB_s{seed}.json", f"v3/arms/armB_s{seed}.json", cfg())
+    res = {"arm": tag, "matched_to": match, "seed": seed, "blocked": blocked, "final": name, "rounds": hist, "gate": g["decision"], "failed_rules": g["failed_rules"]}
+    R.save_json(res, path("adapters", cfg()) / f"arm{tag}_s{seed}.json")
+    hub.push(path("adapters", cfg()) / f"arm{tag}_s{seed}.json", f"v3/arms/arm{tag}_s{seed}.json", cfg())
     return {"final": name, "gate": g["decision"], "failed_rules": g["failed_rules"],
             "val": {m: vm["overall"].get(m) for m in ("accuracy", "prudence", "over_conservativeness", "cost")}}
 
