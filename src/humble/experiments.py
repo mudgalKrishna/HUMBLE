@@ -201,19 +201,28 @@ def _get_adapter(name):
     return local
 
 
-def train_naive(J, probe_set="squad3", seed=31):
-    """The candidate a company would ship: answer-only SFT on the train pool (no ABSTAIN targets)."""
+def train_naive(J, probe_set="squad3", seed=31, name=None, max_steps=None, lr=None):
+    """The candidate a company would ship: answer-only SFT on the train pool (no ABSTAIN targets).
+
+    `max_steps` / `lr` train a lighter, only partly broken naive model (Fix 1: targeted vs random repair when the
+    damage is partial); give it its own `name` (e.g. naive_light_s31) so it never collides with naive_s<seed>.
+    The default call is unchanged and still trains naive_s<seed>."""
     from .curate import curate_sft, examples_from_items
     from .prompts import target_text
     from . import train as T
-    name = f"naive_s{seed}"
+    if name is None:
+        if max_steps or lr is not None:
+            raise ValueError("a lighter naive model needs its own name, e.g. name='naive_light_s31'")
+        name = f"naive_s{seed}"
     out = path("adapters", cfg()) / name
     if (out / "adapter" / "adapter_config.json").exists():
         return {"skipped": name}
     items = [it for it in _train_items(probe_set) if it["label"] == "answer"]
     msgs, cs = curate_sft(examples_from_items(items, target_text), path("curated", cfg()) / name, name)
     J.log(f"curated {cs}")
-    adir, info = T.sft(msgs, out, seed=seed, log=J.log)
+    adir, info = T.sft(msgs, out, seed=seed, max_steps=max_steps, lr=lr, log=J.log)
+    info.update({"max_steps": max_steps, "lr_override": lr})
+    (out / "train_info.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
     hub.push(path("curated", cfg()) / name / "curated", f"v3/curated/{name}", cfg())
     _push_adapter(out, name)
     return {"adapter": name, "curation": cs, "train": info}
