@@ -10,12 +10,15 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 DL = Path(sys.argv[1] if len(sys.argv) > 1 else "humble_v3_results")
-OUT = Path(__file__).resolve().parent / "RESULTS.md"
+OUT = Path(__file__).resolve().parent / (f"RESULTS_{os.environ['HUMBLE_MODEL_ID'].split('/')[-1]}.md"
+                                         if os.environ.get("HUMBLE_MODEL_ID") else "RESULTS.md")
 PS = "squad3v"
 
 
 def fetch():
-    for rid in ["KM2007/humble-runs", "KM2007/humble-v3"] + [f"KM2007/humble-v3-nb{i}" for i in range(1, 9)]:
+    own = os.environ.get("HUMBLE_HF_REPO")  # set when reporting another base model (its own repo)
+    repos = [own] if own else ["KM2007/humble-runs", "KM2007/humble-v3"] + [f"KM2007/humble-v3-nb{i}" for i in range(1, 9)]
+    for rid in repos:
         try:
             snapshot_download(rid, repo_type="dataset", local_dir=str(DL), token=os.environ.get("HF_TOKEN"),
                               allow_patterns=["v3/audits/**/metrics.json", "v3/audits/**/metrics_judged.json",
@@ -92,7 +95,7 @@ def main():
     A = [arms.get(f"armA_s{s}", {}).get("final") for s in (31, 32, 33)]
     B = [arms.get(f"armB_s{s}", {}).get("final") for s in (31, 32, 33)]
     L = []
-    L += ["# HUMBLE v3 results (Tiny Aya Global)", "",
+    L += [f"# HUMBLE v3 results ({os.environ.get('HUMBLE_MODEL_ID', 'CohereLabs/tiny-aya-global')})", "",
           "All numbers are percentages unless marked; computed from saved `predictions.jsonl` files. "
           "Prudence = ABSTAIN on unanswerable probes; over-conservativeness = ABSTAIN on probes the original answered "
           "correctly; cost uses the `support` profile weights (2/2/2). Test = locked test, evaluated once per model.", ""]

@@ -16,16 +16,16 @@ paths:
   logs: logs
 
 hub:
-  repo: KM2007/humble-v3          # HF dataset repo for v3 code, probes, adapters and audits (writes)
-  legacy_repo: KM2007/humble-runs # earlier iterations; read-only fallback for pulls
+  repo: ${HUMBLE_HF_REPO:-KM2007/humble-v3}   # HF dataset repo this run writes to (one repo per base model)
+  legacy_repo: ${HUMBLE_LEGACY_REPO:-KM2007/humble-runs}  # read-only fallback; set HUMBLE_LEGACY_REPO=none for other models
   repo_type: dataset
   push_timeout_s: 300             # a rate-limited push never blocks a job longer than this
   sync_state: false               # status/log pushes off (they exhausted the commit rate limit)
-  per_node_repos: true            # notebook NB<i> writes to <repo>-nb<i>; reads search all of them
+  per_node_repos: ${HUMBLE_PER_NODE:-true}  # notebook NB<i> writes to <repo>-nb<i>; reads search all of them
   n_nodes: 8
 
 model:
-  base_id: CohereLabs/tiny-aya-global
+  base_id: ${HUMBLE_MODEL_ID:-CohereLabs/tiny-aya-global}
   local_path: ${HUMBLE_MODEL_PATH:-}   # optional local copy of the base model
   dtype: bfloat16
   max_input_tokens: 3072

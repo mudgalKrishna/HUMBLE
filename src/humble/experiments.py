@@ -20,7 +20,17 @@ def cfg():
     global CFG
     if CFG is None:
         CFG = load_config()
+        _check_model_repo(CFG)
     return CFG
+
+
+def _check_model_repo(c):
+    """Audit names (original, naive_s31, ...) are not namespaced by model, so every base model needs its own
+    Hub repo; otherwise a run could silently gate against another model's `original` audit."""
+    from .hub import read_repos
+    if c["model"]["base_id"] != "CohereLabs/tiny-aya-global" and any(r.startswith("KM2007/humble-") for r in read_repos(c)):
+        raise RuntimeError("base model is not Tiny Aya Global but the Hub repos are the Tiny Aya ones: set "
+                           "HUMBLE_HF_REPO=<you>/humble-<model>, HUMBLE_LEGACY_REPO=none, HUMBLE_PER_NODE=false")
 
 
 # ------------------------------------------------------------------ environment

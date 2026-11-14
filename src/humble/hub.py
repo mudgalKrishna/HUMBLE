@@ -21,13 +21,17 @@ def _api():
     return HfApi(token=os.environ.get("HF_TOKEN"))
 
 
+def _truthy(v) -> bool:
+    return v if isinstance(v, bool) else str(v).strip().lower() not in ("false", "0", "no", "")
+
+
 def repo(cfg=None):
     """The repo this machine WRITES to. Each notebook node gets its own repo (<repo>-nb<N>), spreading the
     per-repo commit rate limit; reads search every repo (see read_repos)."""
     cfg = cfg or load_config()
     node = os.environ.get("HUMBLE_NODE", "")
     base = cfg["hub"]["repo"]
-    if cfg["hub"].get("per_node_repos", True) and node.upper().startswith("NB"):
+    if _truthy(cfg["hub"].get("per_node_repos", True)) and node.upper().startswith("NB"):
         return f"{base}-{node.lower()}", cfg["hub"]["repo_type"]
     return base, cfg["hub"]["repo_type"]
 
@@ -36,8 +40,8 @@ def read_repos(cfg=None):
     """Legacy repo first, then the shared v3 repo, then every per-node repo (newer files win on pull)."""
     cfg = cfg or load_config()
     base = cfg["hub"]["repo"]
-    out = [r for r in (cfg["hub"].get("legacy_repo"), base) if r]
-    if cfg["hub"].get("per_node_repos", True):
+    out = [r for r in (cfg["hub"].get("legacy_repo"), base) if r and str(r).lower() != "none"]
+    if _truthy(cfg["hub"].get("per_node_repos", True)):
         out += [f"{base}-nb{i}" for i in range(1, cfg["hub"].get("n_nodes", 8) + 1)]
     return out
 
