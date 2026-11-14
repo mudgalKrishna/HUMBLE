@@ -47,6 +47,20 @@ def model_card(title, role, gate, metrics, training, profile="support"):
                        rows=rows, training=json.dumps(training, default=str)[:1500])
 
 
+def _hub_ready(adapter_dir, base_id="CohereLabs/tiny-aya-global"):
+    """Copy of the adapter without PEFT's auto README and with the base model as a Hub id, not a local path."""
+    import shutil
+    import tempfile
+    from pathlib import Path
+    out = Path(tempfile.mkdtemp()) / "adapter"
+    shutil.copytree(adapter_dir, out, ignore=shutil.ignore_patterns("README.md"))
+    c = out / "adapter_config.json"
+    cfg = json.loads(c.read_text())
+    cfg["base_model_name_or_path"] = base_id
+    c.write_text(json.dumps(cfg, indent=2))
+    return out
+
+
 def create_private_repos(owner, models: dict, dataset_folder=None, cfg=None):
     """models = {repo_name: {"adapter_dir", "card"}}. Returns the repo ids."""
     api = HfApi(token=os.environ.get("HF_TOKEN"))
@@ -54,7 +68,7 @@ def create_private_repos(owner, models: dict, dataset_folder=None, cfg=None):
     for name, m in models.items():
         rid = f"{owner}/{name}"
         api.create_repo(rid, repo_type="model", private=True, exist_ok=True)
-        api.upload_folder(repo_id=rid, folder_path=str(m["adapter_dir"]), commit_message="HUMBLE adapter")
+        api.upload_folder(repo_id=rid, folder_path=str(_hub_ready(m["adapter_dir"])), commit_message="HUMBLE adapter")
         api.upload_file(repo_id=rid, path_or_fileobj=m["card"].encode(), path_in_repo="README.md", commit_message="model card")
         ids.append(rid)
     if dataset_folder:

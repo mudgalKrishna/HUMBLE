@@ -552,6 +552,49 @@ def retest_dpo_arm(J, tag, seed=31):
     return test_once(J, dpo_name, adapter=dpo_name)
 
 
+DATA_CARD = """---
+license: cc-by-sa-4.0
+tags: [humble, rag, abstention, honesty, lexsi-hackathon]
+---
+# HUMBLE v3 probes and audits
+
+Probe sets (SQuAD-derived multi-passage RAG probes, XQuAD, CUAD, a fictional-company documents demo), every audit
+folder (`predictions.jsonl`, `metrics.json`, gate files, `audit.toml`), certificates and arm histories behind
+https://github.com/mudgalKrishna/HUMBLE (results/v3/RESULTS.md). SQuAD 2.0 / XQuAD derived data: CC BY-SA 4.0;
+CUAD derived data: CC BY 4.0. Model outputs come from adapters on CohereLabs/tiny-aya-global (CC BY-NC 4.0).
+"""
+
+
+def publish_private(J, owner="KM2007"):
+    """Create the PRIVATE model repos, the dataset repo and a private collection (plan section 16).
+    Making anything public is a separate, explicit step (publish.make_public)."""
+    from . import publish as P
+    picks = {"humble-tinyaya-naive-blocked": ("naive_s31", "naive answer-only fine-tune (blocked by the gate)"),
+             "humble-tinyaya-repaired-A": ("repA_s31_r1", "arm A: HUMBLE repair loop from the blocked adapter"),
+             "humble-tinyaya-control-B": ("ctlB_s31_r1", "arm B: matched random-data repair control"),
+             "humble-tinyaya-prevention-C": ("prevC_s31", "arm C: fresh honest fine-tune (prevention)")}
+    stage = path("adapters", cfg()).parent / "_publish"
+    hub.pull(["v3/probes/**", "v3/audits/**", "v3/certificates/**", "v3/arms/**", "v3/judge/**"], stage)
+    models = {}
+    for repo, (name, role) in picks.items():
+        adir = _get_adapter(name)
+        t = stage / "v3" / "audits" / "squad3v" / name / "test"
+        m = json.loads((t / "metrics.json").read_text())["overall"]
+        g = json.loads((t / "gate_support.json").read_text())
+        if m.get("over_conservativeness") is None:
+            g2 = [r for r in g["rules"] if r["rule"] == "G2"]
+            m["over_conservativeness"] = g2[0]["candidate"] if g2 else None
+        keep = {k: m.get(k) for k in ("accuracy", "prudence", "over_conservativeness", "honesty", "cost", "echo_rate")}
+        ti = path("adapters", cfg()) / name / "train_info.json"
+        training = json.loads(ti.read_text()) if ti.exists() else {"adapter": name}
+        models[repo] = {"adapter_dir": adir, "card": P.model_card(f"HUMBLE: {role}", role, g, keep, training)}
+    (stage / "README.md").write_text(DATA_CARD, encoding="utf-8")
+    ids = P.create_private_repos(owner, models, dataset_folder=stage)
+    slug = P.make_collection(owner, "HUMBLE: catch and repair bluffing in fine-tuned RAG models", ids,
+                             "Tiny Aya Global adapters (blocked, repaired, control, prevention) and all probes/audits.")
+    return {"repos": ids, "collection": slug, "private": True}
+
+
 def flush(J):
     """Re-upload everything that failed to reach the Hub (rate limits) into this node's repo, plus all local audits."""
     n = hub.flush_pending(cfg())
