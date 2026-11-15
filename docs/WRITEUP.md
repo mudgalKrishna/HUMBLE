@@ -81,7 +81,7 @@ are a random sample anyway. A follow-up rules this out ([FIX1_TARGETING.md](../r
 lighter naive model (10 training steps; test prudence 12.6%, so its mistakes are a real, skewed subset) was repaired
 by targeted and by matched random data on three seeds, and random data was again significantly better on cost and
 prudence in every seed (about 5 points more abstention), while targeted data kept about one point more accuracy.
-The likelier reason is coverage: random abstain targets follow the probe design across all five categories, while
+A possible (untested) reason is coverage: random abstain targets follow the probe design across all five categories, while
 the model's own bluffs over-represent the easy U1 category. The same run shows how fast the damage happens:
 abstention collapses within 10–20 optimizer steps of answer-only fine-tuning.
 
