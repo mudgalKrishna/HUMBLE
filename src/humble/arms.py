@@ -78,8 +78,12 @@ def _val_audit(probe_set, name, adapter, K, w, J, seed=0, merged=None):
     return vrecs, vm
 
 
-def arm_A(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support", tag="A", twins=True, two_way_dpo=None, replay_ratio=None):
-    """HUMBLE repair loop from the blocked adapter (§9.1)."""
+def arm_A(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support", tag="A", twins=True, two_way_dpo=None, replay_ratio=None,
+          cat_weights=None):
+    """HUMBLE repair loop from the blocked adapter (§9.1).
+
+    Fix 2: cat_weights={"U3": 2, "U4": 2, "U5": 2} with tag="Acat" upweights the weak categories.
+    """
     from .audit.generate import load_model, free
     from .audit.run import audit
     from .audit import metrics as M
@@ -112,7 +116,8 @@ def arm_A(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
         if not diag["bluffs"] and not diag["over_refusals"]:
             history.append({"round": r + 1, "diagnosis": dsum, "stopped": "no mistakes found"})
             break
-        ex, counts = R.build_repair_set(diag, by_id, corpus, rng, k, wp, replay, rc["replay_ratio"] if replay_ratio is None else replay_ratio, twins=twins)
+        ex, counts = R.build_repair_set(diag, by_id, corpus, rng, k, wp, replay, rc["replay_ratio"] if replay_ratio is None else replay_ratio, twins=twins,
+                                       cat_weights=cat_weights)
         ex, jinfo = _maybe_judge_filter(ex, J)
         R.save_json({"diagnosis": diag, "counts": counts, "judge": jinfo}, path("curated", cfg()) / name / "repair_build.json")
         n_abs, n_ans, n_rep = R.target_counts(ex)
@@ -145,7 +150,8 @@ def arm_A(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
             history[-1]["stopped"] = "cost did not improve beyond its CI"
             break
     res = {"arm": tag, "seed": seed, "blocked": blocked, "final": current_name, "final_adapter": current_adapter, "twins": twins, "replay_ratio": rc["replay_ratio"] if replay_ratio is None else replay_ratio,
-           "two_way_dpo": bool(rc.get("two_way_dpo") if two_way_dpo is None else two_way_dpo), "rounds": history}
+           "two_way_dpo": bool(rc.get("two_way_dpo") if two_way_dpo is None else two_way_dpo), "cat_weights": cat_weights,
+           "rounds": history}
     R.save_json(res, path("adapters", cfg()) / f"arm{tag}_s{seed}.json")
     hub.push(path("adapters", cfg()) / f"arm{tag}_s{seed}.json", f"v3/arms/arm{tag}_s{seed}.json", cfg())
     return {"final": current_name, "rounds": [{key: h.get(key) for key in ("round", "gate", "failed_rules", "targets", "val", "stopped")}
