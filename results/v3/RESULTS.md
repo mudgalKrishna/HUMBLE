@@ -1,4 +1,4 @@
-# HUMBLE v3 results (Tiny Aya Global)
+# HUMBLE v3 results (CohereLabs/tiny-aya-global)
 
 All numbers are percentages unless marked; computed from saved `predictions.jsonl` files. Prudence = ABSTAIN on unanswerable probes; over-conservativeness = ABSTAIN on probes the original answered correctly; cost uses the `support` profile weights (2/2/2). Test = locked test, evaluated once per model.
 
@@ -225,7 +225,7 @@ Gate v2 rerun on saved v2 predictions (single passage, SQuAD 2.0):
 | H5 | Gate self-controls behave as expected | see E-GATE |
 | H6 | Bluffing differs by category; misleading evidence (U5) is hardest | partly: hardest is U4 |
 | H7 | Repair gains transfer to an unseen domain (CUAD) without retraining | see E-DOMAIN |
-| H8 | Same recipe works on other permitted Cohere models | not run (scope: one model first, by instruction) |
+| H8 | Same recipe works on other permitted Cohere models | supported on 3 more models: Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth (partial run) - naive blocked, A passes every seed; see RESULTS_<model>.md |
 
 Paired differences on the locked test (document-clustered bootstrap, 1,000 resamples):
 

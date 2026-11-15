@@ -99,10 +99,22 @@ answerable twins reduce it further.
 **H6 partly supported.** Categories differ strongly; for the original model the hardest category is U4
 (underspecified), with U5 (misleading) next; after repair, U3 (false premise), U4 and U5 remain the weakest.
 
+**Fix 2: upweighting the weak categories** (Tiny Aya Global, run by a teammate;
+[FIX2_CATEGORIES.md](../results/v3/FIX2_CATEGORIES.md), [RESULTS_fix2_categories.md](../results/v3/RESULTS_fix2_categories.md)).
+Repeating every U3/U4/U5 repair example twice (Acat; replay resized to keep 1:1) raised squad3v test prudence from
+72.6% to 77.3% (U3 53.0 → 59.0, U4 31.0 → 39.3, U5 35.3 → 42.7) and lowered cost from 1.11 to 1.02, with accuracy
+about the same (72.5 → 72.1) and unnecessary abstention up by about 0.8 points. On a new, larger U4/U5 test set
+(squad3u45: 150 U4 + 150 U5 judged items from paragraphs no squad3/squad3v prompt showed) prudence rose from 33.9%
+to 42.2%. The paired gain is significant on seeds 31 and 33 but not on 32, so it is a consistent but
+seed-sensitive gain, not a pass under the every-seed rule. Caveats: the blocked model is a retrain of the naive
+recipe (`naive_s31b`, because the published adapter was not readable with the teammate's token), so plain repair was
+re-run on it (Ab) for a fair comparison; and squad3u45 does not exclude paragraphs from earlier iterations (no access
+to that repo), as recorded in its MANIFEST.
+
 **H7: repair transfers.** On XQuAD the repaired model abstains on about 85% of unanswerable probes (original 55%,
 naive 0%); on CUAD contracts on about half (naive 0%), with judge-graded accuracy equal to the naive model's.
 
-**H8 supported on a second model: Aya Expanse 8B** (recipe unchanged, run by a teammate;
+**H8 supported on three more models. Aya Expanse 8B** (recipe unchanged, run by a teammate;
 [RESULTS_aya-expanse-8b.md](../results/v3/RESULTS_aya-expanse-8b.md)). The naive fine-tune removed all abstention
 (test prudence 10.5% → 0.0%) and was blocked (G1, G4); A passed on all three seeds (accuracy 90.4%, prudence 82.8%,
 over-conservativeness 0.4%); B passed with more abstention (88.0%), the same pattern as on Tiny Aya; C passed here
@@ -111,6 +123,17 @@ over-conservativeness 0.4%); B passed with more abstention (88.0%), the same pat
 by the judge and all gates recomputed from saved predictions (original 84.7%, 254 known items). Two lessons: the
 original Aya model already abstains rarely (10.5%), so HUMBLE repair leaves it far more honest than before
 fine-tuning; and a release gate must grade answers in the model's own style, or it will under-count over-refusal.
+
+*Tiny Aya Fire* (run by a teammate; [RESULTS_tiny-aya-fire.md](../results/v3/RESULTS_tiny-aya-fire.md)): naive
+blocked (test prudence 36.0% → 0.0%, G1 and G4); A passed on all three seeds (accuracy 71.1%, prudence 74.2%,
+over-conservativeness 2.2%); B passed with more abstention (81.5%) and beat A on all three seeds, so H3 is not
+supported on Fire either. Prevention (C) was not run on Fire.
+
+*Tiny Aya Earth* (partial run; [RESULTS_tiny-aya-earth.md](../results/v3/RESULTS_tiny-aya-earth.md)): all three
+naive seeds blocked (test prudence 22.0% → 0.0%, G1 and G4); A passed on every seed (accuracy 71.9%, prudence
+73.4%, over-conservativeness 1.8%); C reached 81.5% prudence with 4.8% over-conservativeness; repair without replay
+was blocked by G2 on every seed, as on Tiny Aya Global. On XQuAD the repaired Earth model abstained on 81.4% of
+unanswerable probes (original 39.3%, naive 0%). The random control B and the full certificates are still to run.
 
 **Lambda scaling (D) cannot repair.** Every lambda from 0.05 to 1.0 is blocked; bluffing rises with lambda, so only
 lambda = 0 (the original) passes, losing the fine-tune's gains. **Two-way DPO**: the first run was invalid because
@@ -124,13 +147,14 @@ by recording the adapter actually evaluated, and the DPO adapter was tested once
 
 ## 4. Limitations
 
-* Two models: Tiny Aya Global (all experiments) and Aya Expanse 8B (core recipe only; judge-graded accuracy, and
-  the judge is the same model family). More Cohere models are in progress.
+* Four models: Tiny Aya Global (all experiments), Aya Expanse 8B (core recipe only; judge-graded accuracy, and
+  the judge is the same model family), Tiny Aya Fire (no prevention arm) and Tiny Aya Earth (partial: no random
+  control yet).
 * The judge filters U4 and U5 heavily (pass rates about 21% and 28%): a sufficiency judge tends to call an edited
   passage "sufficient", so the kept misleading items are those where something looks off even to the judge. U4/U5
   cells are small (28 and 50 test items) and their CIs are wide.
-* Judge validation against 100 human labels (E-JUDGE) is prepared (`v3/judge/judge_label_sheet_val.csv`) but needs
-  the team's labels.
+* Judge validation against 100 human labels (E-JUDGE) is prepared ([data/judge/judge_label_sheet_val.csv](../data/judge/judge_label_sheet_val.csv): fill
+  `human_sufficient` with yes/no) but still needs the team's labels (Fix 3, open).
 * XQuAD paragraphs are translations of SQuAD v1.1 dev paragraphs whose English originals may appear in our SQuAD pools.
 * Greedy decoding is not bit-exact across batch layouts on GPU: a rerun reproduced 198/200 actions (E-REPRO).
 * The product-mode demo uses fictional policy documents; generated QA from a 3B model is noisy.

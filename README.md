@@ -40,11 +40,29 @@ Track 1 (Fine-tuning and Data Curation), Lexsi AI Safety and Alignment Hackathon
    raised prudence by 3 points but was blocked on test for over-refusal (3.2%). Lambda scaling cannot keep any of
    the fine-tune: bluffing appears already at lambda = 0.05.
 
-6. **The recipe transfers to a second, larger model (Aya Expanse 8B, unchanged recipe).** Naive fine-tuning again
+6. **The recipe transfers to a larger model (Aya Expanse 8B, unchanged recipe).** Naive fine-tuning again
    removed all abstention (prudence 10.5% → 0.0%) and was blocked; HUMBLE repair passed on every seed with
    accuracy 90.4% (naive 90.0%, original 84.7%), prudence 82.8% and over-refusal 0.4%; random data again abstained
    more (88.0%). Aya answers in full sentences, so accuracy and over-refusal there are judge-graded
    ([results/v3/RESULTS_aya-expanse-8b.md](results/v3/RESULTS_aya-expanse-8b.md)).
+
+7. **And to two more Tiny Aya models (Fire and Earth).** On Tiny Aya Fire (teammate run) naive fine-tuning was
+   blocked (prudence 36.0% → 0.0%) and HUMBLE repair passed on every seed (accuracy 71.1%, prudence 74.2%,
+   over-refusal 2.2%); the random control B again abstained more (81.5%) and beat A on all three seeds, so H3 is
+   not supported on Fire either; prevention (C) was not run
+   ([results/v3/RESULTS_tiny-aya-fire.md](results/v3/RESULTS_tiny-aya-fire.md)). On Tiny Aya Earth (partial run)
+   all three naive seeds were blocked (prudence 22.0% → 0.0%) and A passed on every seed (accuracy 71.9%,
+   prudence 73.4%, over-refusal 1.8%); its random control B is still to run
+   ([results/v3/RESULTS_tiny-aya-earth.md](results/v3/RESULTS_tiny-aya-earth.md)).
+
+8. **Upweighting the weak categories helps, but is seed-sensitive (Fix 2, Tiny Aya Global, teammate run).**
+   Repeating the U3/U4/U5 repair examples (Acat) raised prudence on squad3v from 72.6% to 77.3% and on a new
+   U4/U5 test set (squad3u45, 300 items from paragraphs no earlier prompt showed) from 33.9% to 42.2%, with about
+   the same accuracy and about 0.8 points more unnecessary abstention. The gain is significant on seeds 31 and 33
+   but not 32: consistent, but not a pass under the every-seed rule. Caveats: the blocked model is a retrain
+   (`naive_s31b`), and squad3u45 does not exclude paragraphs from earlier iterations
+   ([results/v3/FIX2_CATEGORIES.md](results/v3/FIX2_CATEGORIES.md),
+   [results/v3/RESULTS_fix2_categories.md](results/v3/RESULTS_fix2_categories.md)).
 
 Full tables with CIs: [results/v3/RESULTS.md](results/v3/RESULTS.md). Every number is regenerated from saved
 `predictions.jsonl` files by `results/v3/make_report.py`.

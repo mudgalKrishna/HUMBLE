@@ -13,6 +13,9 @@ DL = Path(sys.argv[1] if len(sys.argv) > 1 else "humble_v3_results")
 OUT = Path(__file__).resolve().parent / (f"RESULTS_{os.environ['HUMBLE_MODEL_ID'].split('/')[-1]}.md"
                                          if os.environ.get("HUMBLE_MODEL_ID") else "RESULTS.md")
 PS = "squad3v"
+# H8 is judged across base models; each model's numbers are in its own RESULTS_<model>.md.
+H8_VERDICT = ("supported on 3 more models: Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth (partial run) - naive blocked, "
+              "A passes every seed; see RESULTS_<model>.md")
 
 
 def fetch():
@@ -175,6 +178,8 @@ def main():
     if er:
         L += ["## Hypotheses (pre-registered)", "", "| ID | Claim | Verdict |", "|---|---|---|"]
         for k, v in er["hypotheses"].items():
+            if k == "H8" and not os.environ.get("HUMBLE_MODEL_ID"):
+                v = dict(v, verdict=H8_VERDICT)  # the other models live in their own repos and reports
             L.append(f"| {k} | {v['claim']} | {v['verdict']} |")
         L += ["", "Paired differences on the locked test (document-clustered bootstrap, 1,000 resamples):", "",
               "| Comparison | Metric | Diff | 95% CI | Significant |", "|---|---|---|---|---|"]
