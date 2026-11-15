@@ -85,3 +85,30 @@ def profile(name=None, cfg=None) -> dict:
     if name not in profiles:
         raise KeyError(f"unknown profile {name!r}; known: {sorted(profiles)}")
     return {"name": name, **profiles[name]}
+
+
+def one_gpu_job_at_a_time(fn):
+    """Parallel jobs on one GPU (scripts/*_parallel.sh) OOM a 96 GB card when two trainings or audits overlap
+    (each takes 30-45 GB). Serialise GPU work with a file lock in HUMBLE_HOME/state, and hand the cached memory
+    back (PyTorch keeps it in this process otherwise) before the next job takes the lock. Not re-entrant: never
+    call one wrapped function from inside another."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrap(*args, **kwargs):
+        import fcntl
+        import gc
+        lock = path("state", kwargs.get("cfg") or load_config()) / "gpu.lock"
+        with open(lock, "w") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                gc.collect()
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except ImportError:
+                    pass
+    return wrap
