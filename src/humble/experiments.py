@@ -649,6 +649,53 @@ def publish_private(J, owner="KM2007"):
     return {"repos": ids, "collection": slug, "private": True}
 
 
+def model_recipe(J, naive_seeds=(31,), a_seeds=(31, 32, 33), b_seeds=(31, 32, 33), c_seeds=(31,), probe_set="squad3v"):
+    """The whole Tiny Aya recipe for another base model, in order, on one GPU. Resumable: finished audits, tests,
+    adapters and arms are skipped, so after a crash or restart the same call continues where it stopped."""
+    out = {}
+
+    def step(key, fn):
+        J.log(f"recipe step {key}")
+        out[key] = fn()
+        J.status("running", progress=key)
+        return out[key]
+
+    def arm(tag, s, fn):
+        f = path("adapters", cfg()) / f"arm{tag}_s{s}.json"
+        if f.exists():
+            out[f"arm{tag}_s{s}"] = {"skipped": str(f)}
+        else:
+            step(f"arm{tag}_s{s}", fn)
+        step(f"test{tag}_s{s}", lambda: test_arm(J, tag, s))
+
+    step("env", lambda: env_check(J))
+    step("orig_val", lambda: audit_candidate(J, "original", split="val", probe_set=probe_set))
+    step("orig_test", lambda: test_once(J, "original", probe_set=probe_set))
+    for s in naive_seeds:
+        n = f"naive_s{s}"
+        step(f"train_{n}", lambda: train_naive(J, seed=s))
+        step(f"{n}_val", lambda: audit_candidate(J, n, adapter=n, split="val", probe_set=probe_set))
+        g = step(f"{n}_gate", lambda: gate_job(J, n, split="val", probe_set=probe_set))
+        step(f"{n}_test", lambda: test_once(J, n, adapter=n, probe_set=probe_set))
+        if s == naive_seeds[0] and g.get("decision") != "BLOCK":
+            out["stopped"] = f"{n} was not blocked on val ({g.get('decision')}): repair arms skipped, check before going on"
+            return out
+    for s in a_seeds:
+        arm("A", s, lambda: arm_A(J, seed=s, probe_set=probe_set))
+    for s in b_seeds:
+        arm("B", s, lambda: arm_B(J, seed=s, probe_set=probe_set))
+    for s in c_seeds:
+        c = f"prevC_s{s}"
+        step(f"train_{c}", lambda: train_prevention(J, seed=s))
+        step(f"{c}_val", lambda: audit_candidate(J, c, adapter=c, split="val", probe_set=probe_set))
+        step(f"{c}_test", lambda: test_once(J, c, adapter=c, probe_set=probe_set))
+    finals = ["naive_s31"] + [f"repA_s{s}_r1" for s in a_seeds] + [f"ctlB_s{s}_r1" for s in b_seeds] + [f"prevC_s{s}" for s in c_seeds]
+    step("certify", lambda: certify_job(J, finals, probe_set=probe_set))
+    step("summary", lambda: analysis(J, "e_repair_summary", split="test"))
+    step("e_cat", lambda: analysis(J, "e_cat", split="test"))
+    return out
+
+
 def flush(J):
     """Re-upload everything that failed to reach the Hub (rate limits) into this node's repo, plus all local audits."""
     n = hub.flush_pending(cfg())
