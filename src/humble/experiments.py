@@ -606,11 +606,21 @@ def certify_job(J, names, split="test", probe_set="squad3v", profile="support"):
     return out
 
 
+def arm_json(J, tag, seed, wait=False):
+    """An arm's result json: the local copy written by arm_A/arm_B on this machine, else the Hub copy
+    (waiting for it when `wait`, for cross-notebook chains). Local-first lets a run work with no Hub repo."""
+    local = path("adapters", cfg()) / f"arm{tag}_s{seed}.json"
+    if not local.exists():
+        if wait:
+            wait_hub(J, f"v3/arms/arm{tag}_s{seed}.json")
+        hub.pull([f"v3/arms/arm{tag}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
+        local = path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{tag}_s{seed}.json"
+    return json.loads(local.read_text())
+
+
 def test_arm(J, tag, seed=31):
     """Wait for arm `tag` to finish (its json on the Hub), then evaluate its final adapter on the locked test once."""
-    wait_hub(J, f"v3/arms/arm{tag}_s{seed}.json")
-    hub.pull([f"v3/arms/arm{tag}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
-    a = json.loads((path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{tag}_s{seed}.json").read_text())
+    a = arm_json(J, tag, seed, wait=True)
     # With two-way DPO the val-audited adapter is "<final>_dpo"; test exactly that adapter.
     final = a.get("final_adapter") or a["final"]
     return test_once(J, final, adapter=final)

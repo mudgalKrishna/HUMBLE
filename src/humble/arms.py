@@ -165,8 +165,8 @@ def arm_B(J, seed=31, probe_set="squad3v", blocked="naive_s31", profile="support
     from . import gate as G, repair as R
     from .config import profile as get_profile
     prof = get_profile(profile, cfg())
-    hub.pull([f"v3/arms/arm{match}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
-    a = json.loads((path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{match}_s{seed}.json").read_text())
+    from .experiments import arm_json
+    a = arm_json(J, match, seed)
     if a.get("blocked", blocked) != blocked:
         raise ValueError(f"arm{match}_s{seed} repaired {a.get('blocked')}, not {blocked}: the control must start from the same adapter")
     pdir, probe, corpus, replay, wp = _repair_context(probe_set)
