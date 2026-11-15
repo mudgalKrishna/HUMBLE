@@ -8,8 +8,8 @@ All numbers are percentages unless marked; computed from saved `predictions.json
 |---|---|---|---|---|---|---|---|
 | Original | 60.0 (54.5–65.3) | 36.0 (31.7–40.5) | 0.0 | 0.3 | 68.0 | 2.07 | 38.0 |
 | Naive SFT s31 (blocked) | 72.3 (67.4–77.2) | 0.0 (0.0–0.0) | 0.0 | 0.0 | 50.0 | 2.55 | 48.0 |
-| A HUMBLE repair loop (n=1) | 72.0 | 71.5 | 1.1 | 1.0 | 85.2 | 1.13 | 34.0 |
-| B random control (n=1) | 70.3 | 81.8 | 2.8 | 3.0 | 89.5 | 0.95 | 26.0 |
+| A HUMBLE repair loop (n=3) | 71.1 ± 0.8 | 74.2 ± 2.5 | 2.2 ± 1.0 | 1.7 ± 0.6 | 86.0 ± 0.8 | 1.10 ± 0.03 | 34.0 ± 2.0 |
+| B random control (n=3) | 70.3 ± 0.7 | 81.5 ± 0.4 | 2.6 ± 0.3 | 2.9 ± 0.2 | 89.4 ± 0.3 | 0.96 ± 0.02 | 26.0 ± 0.0 |
 | C prevention | (missing) |
 
 ## E-REPAIR on the SQuAD-derived RAG probes (val)
@@ -18,8 +18,8 @@ All numbers are percentages unless marked; computed from saved `predictions.json
 |---|---|---|---|---|---|---|---|
 | Original | 60.7 (54.9–66.0) | 41.7 (37.3–46.6) | 0.0 | 0.7 | 70.8 | 1.94 | 47.6 |
 | Naive SFT s31 (blocked) | 81.0 (76.4–85.2) | 0.0 (0.0–0.0) | 0.0 | 0.0 | 50.0 | 2.38 | 61.9 |
-| A HUMBLE repair loop (n=1) | 79.7 | 73.2 | 0.5 | 1.0 | 86.3 | 0.93 | 38.1 |
-| B random control (n=1) | 78.3 | 82.3 | 1.1 | 1.3 | 90.6 | 0.78 | 28.6 |
+| A HUMBLE repair loop (n=3) | 79.2 ± 0.5 | 76.5 ± 2.8 | 0.5 ± 0.0 | 1.1 ± 0.2 | 88.0 ± 1.4 | 0.88 ± 0.05 | 35.7 ± 2.4 |
+| B random control (n=3) | 79.0 ± 0.7 | 81.1 ± 1.2 | 0.9 ± 0.3 | 1.3 ± 0.3 | 90.1 ± 0.6 | 0.79 ± 0.01 | 30.2 ± 1.4 |
 | C prevention | (missing) |
 
 ## Gate decisions (val, profile `support`)
@@ -28,6 +28,8 @@ All numbers are percentages unless marked; computed from saved `predictions.json
 |---|---|---|
 | naive_s31 | BLOCK | G1, G4 |
 | repA_s31_r1 | PASS | – |
+| repA_s32_r1 | PASS | – |
+| repA_s33_r1 | PASS | – |
 
 ## Gate decisions on the locked test (certificates, profile `support`)
 
@@ -49,6 +51,8 @@ All numbers are percentages unless marked; computed from saved `predictions.json
 | Original | 44.0 | 48.0 | 27.0 | 10.7 | 12.0 |
 | Naive s31 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | A s31 | 86.0 | 93.0 | 52.0 | 25.0 | 36.0 |
+| A s32 | 91.0 | 94.0 | 62.0 | 32.1 | 38.0 |
+| A s33 | 90.0 | 93.0 | 55.0 | 32.1 | 38.0 |
 
 ## E-LANG: XQuAD (es, hi, ar), evaluation only
 
@@ -91,6 +95,14 @@ Paired differences on the locked test (document-clustered bootstrap, 1,000 resam
 | A_vs_B_s31 | prudence | -0.103 | -0.130 … -0.075 | True |
 | A_vs_B_s31 | over_conservativeness | -0.017 | -0.037 … +0.000 | False |
 | A_vs_B_s31 | accuracy | +0.017 | -0.007 … +0.040 | False |
+| A_vs_B_s32 | cost | +0.088 | +0.032 … +0.149 | True |
+| A_vs_B_s32 | prudence | -0.044 | -0.064 … -0.025 | True |
+| A_vs_B_s32 | over_conservativeness | +0.000 | -0.016 … +0.016 | False |
+| A_vs_B_s32 | accuracy | +0.010 | -0.011 … +0.030 | False |
+| A_vs_B_s33 | cost | +0.173 | +0.114 … +0.241 | True |
+| A_vs_B_s33 | prudence | -0.071 | -0.096 … -0.047 | True |
+| A_vs_B_s33 | over_conservativeness | +0.006 | +0.000 … +0.018 | False |
+| A_vs_B_s33 | accuracy | -0.003 | -0.024 … +0.016 | False |
 | naive_vs_original | prudence | -0.360 | -0.404 … -0.316 | True |
 | naive_vs_original | accuracy | +0.123 | +0.068 … +0.181 | True |
 | naive_vs_original | cost | +0.480 | +0.337 … +0.627 | True |
