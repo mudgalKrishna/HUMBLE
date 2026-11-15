@@ -17,7 +17,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from ..config import config_hash, load_config
+from ..config import config_hash, load_config, one_gpu_job_at_a_time
 from ..prompts import build_prompt, parse_output
 from . import metrics as M
 from .score import auditkit_score, is_correct
@@ -67,6 +67,7 @@ def _toml(d: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+@one_gpu_job_at_a_time
 def audit(model, tok, items, out_dir, candidate, split, *, adapter=None, probe_file=None, test_lock=None,
           samples=0, ptrue=False, known_ids=None, weights=None, cfg=None, log=None, seed=0):
     """Generate, parse, score (AuditKIT) and write the audit folder. Returns (records, metrics)."""

@@ -23,6 +23,8 @@ def _arm_finals(seeds):
     for s in seeds:
         for a in ("A", "B"):
             p = base / "v3" / "arms" / f"arm{a}_s{s}.json"
+            if not p.exists():
+                p = path("adapters", cfg()) / f"arm{a}_s{s}.json"
             if p.exists():
                 arms[a].append(json.loads(p.read_text())["final"])
     lams = []

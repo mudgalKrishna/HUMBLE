@@ -17,7 +17,7 @@ import json
 import shutil
 from pathlib import Path
 
-from ..config import load_config, model_source
+from ..config import load_config, model_source, one_gpu_job_at_a_time
 
 
 def _pc_dataset(messages_file, max_items=None):
@@ -36,6 +36,7 @@ def _pc_dataset(messages_file, max_items=None):
     return Dataset.from_list(rows)
 
 
+@one_gpu_job_at_a_time
 def sft(messages_file, out_dir, *, init_adapter=None, lr=None, epochs=None, seed=1, batch_size=None, grad_accum=None,
         max_steps=None, cfg=None, log=None, base=None):
     """LoRA SFT with AlignTune's TRL backend. With init_adapter, training continues that adapter."""
@@ -94,6 +95,7 @@ def _guard_flash_attn_namespace():
         pass
 
 
+@one_gpu_job_at_a_time
 def dpo(dpo_file, out_dir, *, init_adapter, lr=None, epochs=None, beta=None, seed=1, cfg=None, log=None, base=None):
     """Optional gentle two-way DPO (ABSTAIN > bluff; answer > unneeded ABSTAIN) continuing an adapter."""
     from aligntune.core.backend_factory import create_rl_trainer

@@ -174,3 +174,12 @@ def test_probe_slices_disjoint():
     sl = R.probe_slices(items, 3, 1)
     docs = [{it["source"]["doc"] for it in s} for s in sl]
     assert not (docs[0] & docs[1]) and not (docs[1] & docs[2]) and sum(len(s) for s in sl) == 90
+
+
+def test_upweight_copies_survive_exact_dedup():
+    ex = [{"item_id": "a", "category": "U4", "passages": ["p1", "p2", "p3"]},
+          {"item_id": "b", "category": "A", "passages": ["p1", "p2", "p3"]}]
+    out = R.upweight(ex, {"U4": 3}, random.Random(0))
+    assert [e["item_id"] for e in out] == ["a", "a#w2", "a#w3", "b"]
+    u4 = [tuple(e["passages"]) for e in out if e["category"] == "U4"]
+    assert len(set(u4)) == 3 and all(sorted(p) == ["p1", "p2", "p3"] for p in u4)

@@ -59,8 +59,14 @@ def _ex(item, role, label=None, passages=None, question=None, gold=None, extra=N
     return e
 
 
-def build_repair_set(diag, items_by_id, corpus, rng, k, wrong_pool, replay_pool, replay_ratio=1.0, twins=True):
-    """Return (examples, counts). Examples are item-like dicts with label/gold_answers for target_text."""
+def build_repair_set(diag, items_by_id, corpus, rng, k, wrong_pool, replay_pool, replay_ratio=1.0, twins=True,
+                     cat_weights=None):
+    """Return (examples, counts). Examples are item-like dicts with label/gold_answers for target_text.
+
+    `cat_weights` (e.g. {"U3": 2, "U4": 2, "U5": 2}) repeats every repair example of that category
+    (bluff, twin and its variants) that many times in total. Replay is sized after upweighting, so the
+    repair:replay ratio is unchanged.
+    """
     ex, counts = [], Counter()
     for iid in diag["bluffs"]:
         it = items_by_id[iid]
@@ -98,6 +104,9 @@ def build_repair_set(diag, items_by_id, corpus, rng, k, wrong_pool, replay_pool,
         it = items_by_id[iid]
         ex.append(_ex(it, "over_refusal", "answer"))
         counts["over_refusal->gold"] += 1
+    if cat_weights:
+        ex = upweight(ex, cat_weights, rng)
+        counts["upweighted_extra"] = len(ex) - sum(counts.values())
     n_replay = round(replay_ratio * len(ex))
     pool = list(replay_pool)
     rng.shuffle(pool)
@@ -105,6 +114,28 @@ def build_repair_set(diag, items_by_id, corpus, rng, k, wrong_pool, replay_pool,
         ex.append(_ex(it, "replay", it["label"]))
         counts["replay"] += 1
     return ex, dict(counts)
+
+
+def upweight(examples, cat_weights, rng):
+    """Repeat each example int(cat_weights[category]) times in total (default 1).
+
+    CuratorKIT's exact dedup would collapse plain copies, so each copy shows the same passages in a
+    different order (same question, same target). A one-passage example has no other order and is
+    collapsed by dedup, i.e. it stays at weight 1.
+    """
+    out = []
+    for e in examples:
+        out.append(e)
+        seen = {tuple(e["passages"])}
+        for j in range(1, int(cat_weights.get(e["category"], 1))):
+            ps = list(e["passages"])
+            for _ in range(10):
+                rng.shuffle(ps)
+                if tuple(ps) not in seen:
+                    break
+            seen.add(tuple(ps))
+            out.append(dict(e, item_id=f"{e['item_id']}#w{j + 1}", passages=ps))
+    return out
 
 
 def random_control(n_abstain, n_answer, probe_items, rng, replay_pool, n_replay):

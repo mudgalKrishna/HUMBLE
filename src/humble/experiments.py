@@ -117,6 +117,38 @@ def build_squad_probes(J, probe_set="squad3v", reuse_descriptors_from="squad3", 
 
 
 # ------------------------------------------------------------------ smoke test of the training path
+def build_u45_probes(J, probe_set="squad3u45", n=150, judge_model=None):
+    """Fix 2: larger U4/U5 test set (>= 100 judged items each) from articles outside squad3v val/test.
+    Never touches squad3v. Evaluate with audit_candidate(J, name, split="test", probe_set="squad3u45")."""
+    from .probes import squad
+    from . import judge as JG
+    out = path("probes", cfg()) / probe_set
+    if (out / "MANIFEST.json").exists():
+        J.log("probe set exists; skipping build")
+        return json.loads((out / "MANIFEST.json").read_text())
+    excl = [_probe_dir("squad3"), _probe_dir("squad3v")]
+    desc = json.loads((excl[1] / "descriptors.json").read_text(encoding="utf-8"))
+    try:
+        used = squad.used_paragraph_texts(_used_paragraph_dirs())
+    except Exception as e:  # KM2007/humble-runs not readable: squad3/squad3v exclusion still applies
+        used = set()
+        J.log(f"WARNING earlier-iteration paragraphs NOT excluded (no access): {e!r}"[:400])
+    jm = judge_model or cfg()["judge"]["model_id"]
+    judge = JG.Judge(jm, token=os.environ.get("HF_TOKEN"))
+    J.log(f"judge loaded: {jm}")
+    m = squad.build_u45(out, cfg(), desc, excl, probe_set=probe_set, n=n, used_texts=used,
+                        verify_fn=lambda items: JG.verify(items, judge.sufficiency(items)))
+    m["judge_model"] = jm
+    m["earlier_iterations_excluded"] = bool(used)
+    (out / "MANIFEST.json").write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
+    judge.free()
+    for cell, c in m["cells"].items():
+        if c["built"] < 100:
+            J.log(f"WARNING {cell}: only {c['built']} judged items (< 100); raise n or overgenerate")
+    hub.push(out, f"v3/probes/{probe_set}", cfg())
+    return {"cells": m["cells"], "judge": m.get("judge"), "test_lock": m["test_lock_sha256"]}
+
+
 def smoke_train(J):
     """Tiny end-to-end check: CuratorKIT -> AlignTune SFT -> continue adapter -> DPO -> merge vs LoRA scale."""
     import torch
@@ -579,11 +611,21 @@ def certify_job(J, names, split="test", probe_set="squad3v", profile="support"):
     return out
 
 
+def arm_json(J, tag, seed, wait=False):
+    """An arm's result json: the local copy written by arm_A/arm_B on this machine, else the Hub copy
+    (waiting for it when `wait`, for cross-notebook chains). Local-first lets a run work with no Hub repo."""
+    local = path("adapters", cfg()) / f"arm{tag}_s{seed}.json"
+    if not local.exists():
+        if wait:
+            wait_hub(J, f"v3/arms/arm{tag}_s{seed}.json")
+        hub.pull([f"v3/arms/arm{tag}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
+        local = path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{tag}_s{seed}.json"
+    return json.loads(local.read_text())
+
+
 def test_arm(J, tag, seed=31):
     """Wait for arm `tag` to finish (its json on the Hub), then evaluate its final adapter on the locked test once."""
-    wait_hub(J, f"v3/arms/arm{tag}_s{seed}.json")
-    hub.pull([f"v3/arms/arm{tag}_s{seed}.json"], path("adapters", cfg()).parent / "_hub")
-    a = json.loads((path("adapters", cfg()).parent / "_hub" / "v3" / "arms" / f"arm{tag}_s{seed}.json").read_text())
+    a = arm_json(J, tag, seed, wait=True)
     # With two-way DPO the val-audited adapter is "<final>_dpo"; test exactly that adapter.
     final = a.get("final_adapter") or a["final"]
     return test_once(J, final, adapter=final)

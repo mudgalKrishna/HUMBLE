@@ -151,3 +151,75 @@ def load_corpus(probe_dir, split, language="en"):
     p = Path(probe_dir) / f"paragraphs_{split}.jsonl"
     rows = [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
     return Corpus([Paragraph(r["id"], r["doc"], r["text"]) for r in rows], language=language)
+
+
+def used_probe_texts(probe_dirs) -> set:
+    """Every passage text shown in any prompt (item or twin) of these probe sets."""
+    used = set()
+    for d in probe_dirs:
+        for f in Path(d).glob("items_*.jsonl"):
+            for l in f.read_text(encoding="utf-8").splitlines():
+                if l.strip():
+                    it = json.loads(l)
+                    used.update(it["passages"])
+                    if it.get("twin"):
+                        used.update(it["twin"]["passages"])
+    return used
+
+
+def build_u45(out_dir, cfg, descriptors, exclude_probe_dirs, df=None, probe_set="squad3u45", n=150,
+              verify_fn=None, overgenerate=8.0, from_split="train", used_texts=frozenset()):
+    """Fix 2: a larger U4 (underspecified) / U5 (misleading) evaluation set, written as split `test`.
+
+    squad3v's article split covers every SQuAD article, so there are no unassigned articles. Items come
+    from `from_split` articles (never squad3v val/test), using only paragraphs that no prompt of the
+    `exclude_probe_dirs` probe sets ever showed; distractors come from the same fresh paragraphs.
+    Judge pass rates on squad3v were 12-28%, hence the large `overgenerate`.
+    """
+    pc = cfg["probes"]["squad"]
+    k, seed = cfg["prompt"]["passages_default"], pc["seed"]
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    df = load_squad_frames() if df is None else df
+    split_of = assign_articles(set(df["title"]), seed)
+    assert from_split not in ("val", "test"), "never build from the locked squad3v val/test articles"
+    used = used_probe_texts(exclude_probe_dirs) | set(used_texts)
+    sdf = df[(df["title"].map(split_of) == from_split) & ~df["context"].isin(used)]
+    paras = {}
+    for ctx, title in zip(sdf["context"], sdf["title"]):
+        paras.setdefault(ctx, title)
+    corpus = Corpus([Paragraph(pid(t), d, t) for t, d in paras.items()])
+    with open(out / "paragraphs_test.jsonl", "w", encoding="utf-8") as f:
+        for p in corpus.paragraphs:
+            f.write(json.dumps({"id": p.id, "doc": p.doc, "text": p.text}, ensure_ascii=False) + "\n")
+    ans_src = [{"qid": r.id, "question": r.question, "answers": list(dict.fromkeys(r.answers["text"])),
+                "paragraph_id": pid(r.context), "doc": r.title} for r in sdf.itertuples() if not r.unans]
+    wrong_pool = wrong_answer_pool(ans_src)
+    rng = random.Random(f"{seed}-{probe_set}")
+    manifest = {"probe_set": probe_set, "licence": LICENCE, "seed": seed, "passages_per_prompt": k,
+                "source_split": from_split, "articles": sorted({p.doc for p in corpus.paragraphs}),
+                "paragraphs": len(corpus.paragraphs), "excluded_paragraph_texts": len(used),
+                "excluded_probe_sets": [str(d) for d in exclude_probe_dirs], "cells": {}, "failures": {}}
+    items = []
+    over = overgenerate if verify_fn else 1.0
+    for cat, ctx in (("U4", "C1"), ("U5", "C4")):
+        got, fails = build_category(corpus, rng, probe_set, "test", cat, ctx, ans_src, int(n * over + 0.999), k,
+                                    wrong_pool=wrong_pool, descriptors=descriptors)
+        if verify_fn:
+            keep = verify_fn(got)
+            passed = [it for it, ok in zip(got, keep) if ok]
+            manifest.setdefault("judge", {})[f"test/{cat}/{ctx}"] = {
+                "candidates": len(got), "passed": len(passed), "pass_rate": len(passed) / max(1, len(got))}
+            got = passed[:n]
+        items += got
+        manifest["cells"][f"test/{cat}/{ctx}"] = {"requested": n, "built": len(got)}
+        manifest["failures"][f"test/{cat}/{ctx}"] = fails
+    with open(out / "items_test.jsonl", "w", encoding="utf-8") as f:
+        for it in items:
+            f.write(json.dumps(it, ensure_ascii=False) + "\n")
+    lock = hashlib.sha256((out / "items_test.jsonl").read_bytes()).hexdigest()
+    (out / "TEST_LOCK.txt").write_text(lock + "\n", encoding="utf-8")
+    manifest["test_lock_sha256"] = lock
+    (out / "descriptors.json").write_text(json.dumps(descriptors, indent=1, ensure_ascii=False), encoding="utf-8")
+    (out / "MANIFEST.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
+    return manifest
