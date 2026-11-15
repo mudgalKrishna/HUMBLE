@@ -34,7 +34,8 @@ Track 1 (Fine-tuning and Data Curation), Lexsi AI Safety and Alignment Hackathon
    3.6% vs 1.7% with twins). Replay is the main protection; twins add a smaller one.
 5. **Honest negative results.** Repair data built from the model's own mistakes did *not* beat a random
    sample of the same size (H3 not supported): targeted data keeps ~2 points more accuracy, random data abstains
-   more. A had lower over-refusal than prevention on every seed but significantly so on only one (H4 not supported
+   more. This also held when repairing an only partly broken model, whose mistakes are a real subset
+   ([results/v3/FIX1_TARGETING.md](results/v3/FIX1_TARGETING.md)). A had lower over-refusal than prevention on every seed but significantly so on only one (H4 not supported
    under the pre-registered rule), although C is the one blocked on test. Adding two-way DPO after repair
    raised prudence by 3 points but was blocked on test for over-refusal (3.2%). Lambda scaling cannot keep any of
    the fine-tune: bluffing appears already at lambda = 0.05.

@@ -76,8 +76,14 @@ the locked test in all three seeds.
 **H3 not supported: targeting did not beat random.** The matched random control (B) also passed, with higher
 prudence (about 80%) and lower cost, while A kept about two points more accuracy. Any curated honest data in the RAG
 format with distractors repairs this model; selecting the model's own mistakes did not add measurable value here. A
-likely reason: the naive model bluffs on essentially every unanswerable item, so "its own mistakes" are close to a
-random sample of unanswerables, while the random control covers more answerable items of the pool.
+natural explanation was that the naive model bluffs on essentially every unanswerable item, so "its own mistakes"
+are a random sample anyway. A follow-up rules this out ([FIX1_TARGETING.md](../results/v3/FIX1_TARGETING.md)): a
+lighter naive model (10 training steps; test prudence 12.6%, so its mistakes are a real, skewed subset) was repaired
+by targeted and by matched random data on three seeds, and random data was again significantly better on cost and
+prudence in every seed (about 5 points more abstention), while targeted data kept about one point more accuracy.
+The likelier reason is coverage: random abstain targets follow the probe design across all five categories, while
+the model's own bluffs over-represent the easy U1 category. The same run shows how fast the damage happens:
+abstention collapses within 10–20 optimizer steps of answer-only fine-tuning.
 
 **H4 not supported under the strict rule.** A had lower over-conservativeness than C on every seed (by 3.8, 1.9 and
 3.2 points), but the paired CI excludes zero only for seed 31. In gate terms the difference matters: A passes the
