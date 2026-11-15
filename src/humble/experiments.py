@@ -128,13 +128,18 @@ def build_u45_probes(J, probe_set="squad3u45", n=150, judge_model=None):
         return json.loads((out / "MANIFEST.json").read_text())
     excl = [_probe_dir("squad3"), _probe_dir("squad3v")]
     desc = json.loads((excl[1] / "descriptors.json").read_text(encoding="utf-8"))
-    used = squad.used_paragraph_texts(_used_paragraph_dirs())
+    try:
+        used = squad.used_paragraph_texts(_used_paragraph_dirs())
+    except Exception as e:  # KM2007/humble-runs not readable: squad3/squad3v exclusion still applies
+        used = set()
+        J.log(f"WARNING earlier-iteration paragraphs NOT excluded (no access): {e!r}"[:400])
     jm = judge_model or cfg()["judge"]["model_id"]
     judge = JG.Judge(jm, token=os.environ.get("HF_TOKEN"))
     J.log(f"judge loaded: {jm}")
     m = squad.build_u45(out, cfg(), desc, excl, probe_set=probe_set, n=n, used_texts=used,
                         verify_fn=lambda items: JG.verify(items, judge.sufficiency(items)))
     m["judge_model"] = jm
+    m["earlier_iterations_excluded"] = bool(used)
     (out / "MANIFEST.json").write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
     judge.free()
     for cell, c in m["cells"].items():

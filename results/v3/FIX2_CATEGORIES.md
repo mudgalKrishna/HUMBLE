@@ -23,7 +23,7 @@ run ecat "E.analysis(J, 'e_cat', split='test', names=['original','naive_s31','re
 ## 2b. `squad3u45`: larger U4/U5 test set
 
 squad3v's article split covers all 477 SQuAD 2.0 articles (train 286 / probe 95 / val 48 / test 48), so no
-article is entirely unseen. `build_u45_probes` uses **train-split articles** (never squad3v val/test) and
+article is entirely unseen. `build_u45_probes` (one command: `bash scripts/global_fix2.sh`) uses **train-split articles** (never squad3v val/test) and
 only paragraphs that **no prompt of squad3 or squad3v ever showed** (items, distractors, twins), plus the
 earlier-iteration exclusions. Distractors come from the same fresh paragraphs. squad3v is read only.
 
