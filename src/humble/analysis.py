@@ -83,6 +83,63 @@ def e_repair_summary(J, probe_set="squad3v", split="test", profile="support", bl
             "arms": {k: {m: v[m][0] for m in ("prudence", "over_conservativeness", "accuracy", "cost")} for k, v in table.items()}}
 
 
+def e_targeting(J, probe_set="squad3v", split="test", profile="support", blocked="naive_light_s31",
+                a_tag="Alight", b_tag="Blight", seeds=None):
+    """Fix 1: targeted (A) vs random (B) repair when the blocked model is only partly broken.
+
+    Same paired comparison as the H3 rows of E-REPAIR, but for arms tagged `a_tag` / `b_tag` that both start from
+    `blocked`. Also records how broken the blocked model is (its prudence and bluff rate vs the original), since the
+    question is whether targeting helps when the model's own mistakes are not simply every unanswerable item."""
+    seeds = seeds or cfg()["train"]["seeds"]
+    prof = get_profile(profile, cfg())
+    w = {k: prof[k] for k in ("w_bluff", "w_refuse", "w_wrong")}
+    base = path("adapters", cfg()).parent / "_hub"
+    hub.pull(["v3/arms/*.json"], base)
+    orig = _get_preds(probe_set, "original", split)
+    K = G.known_ids(orig)
+    finals, table, comps, preds = {}, {}, {}, {}
+    for s in seeds:
+        for t in (a_tag, b_tag):
+            p = base / "v3" / "arms" / f"arm{t}_s{s}.json"
+            if not p.exists():
+                p = path("adapters", cfg()) / f"arm{t}_s{s}.json"
+            if p.exists():
+                a = json.loads(p.read_text())
+                if a.get("blocked", blocked) != blocked:
+                    raise ValueError(f"arm{t}_s{s} started from {a.get('blocked')}, not {blocked}")
+                finals[(t, s)] = a.get("final_adapter") or a["final"]
+    names = {"original": ["original"], f"blocked ({blocked})": [blocked],
+             f"{a_tag} targeted": [finals[(a_tag, s)] for s in seeds if (a_tag, s) in finals],
+             f"{b_tag} random": [finals[(b_tag, s)] for s in seeds if (b_tag, s) in finals]}
+    for arm, ns in names.items():
+        rows = []
+        for n in ns:
+            try:
+                preds[n] = _get_preds(probe_set, n, split)
+            except Exception as e:
+                J.log(f"missing {n}/{split}: {e!r}")
+                continue
+            rows.append(M.core(preds[n], K, w))
+        table[arm] = {m: _mean_sd([r.get(m) for r in rows]) for m in METRICS} | {"n_seeds": len(rows), "names": ns}
+    for s in seeds:
+        a, b = finals.get((a_tag, s)), finals.get((b_tag, s))
+        if a in preds and b in preds:
+            comps[f"{a_tag}_vs_{b_tag}_s{s}"] = {m: M.paired_diff(preds[b], preds[a], m, K, w)
+                                                 for m in ("cost", "prudence", "over_conservativeness", "accuracy")}
+    if blocked in preds:
+        comps["blocked_vs_original"] = {m: M.paired_diff(orig, preds[blocked], m, K, w) for m in ("prudence", "accuracy", "cost")}
+    ok, ds = _all_sig(comps, f"{a_tag}_vs_{b_tag}", "cost", -1)
+    verdict = "untested" if ok is None else ("supported" if ok else "not supported")
+    res = {"split": split, "profile": profile, "blocked": blocked, "arms": table, "comparisons": comps,
+           "H3_partial": {"claim": f"Targeted repair {a_tag} lowers cost more than random {b_tag} from a partly broken model "
+                                   "(every seed, paired CI excludes 0)", "verdict": verdict}}
+    out = path("audits", cfg()) / probe_set / f"_e_targeting_{blocked}_{split}.json"
+    out.write_text(json.dumps(res, indent=2, default=str), encoding="utf-8")
+    hub.push(out, f"v3/audits/{probe_set}/{out.name}", cfg())
+    return {"H3_partial": verdict,
+            "arms": {k: {m: v[m][0] for m in ("prudence", "over_conservativeness", "accuracy", "cost")} for k, v in table.items()}}
+
+
 def _all_sig(comps, prefix, metric, sign):
     ds = [v[metric] for k, v in comps.items() if k.startswith(prefix)]
     if not ds:
