@@ -102,6 +102,16 @@ answerable twins reduce it further.
 **H7: repair transfers.** On XQuAD the repaired model abstains on about 85% of unanswerable probes (original 55%,
 naive 0%); on CUAD contracts on about half (naive 0%), with judge-graded accuracy equal to the naive model's.
 
+**H8 supported on a second model: Aya Expanse 8B** (recipe unchanged, run by a teammate;
+[RESULTS_aya-expanse-8b.md](../results/v3/RESULTS_aya-expanse-8b.md)). The naive fine-tune removed all abstention
+(test prudence 10.5% → 0.0%) and was blocked (G1, G4); A passed on all three seeds (accuracy 90.4%, prudence 82.8%,
+over-conservativeness 0.4%); B passed with more abstention (88.0%), the same pattern as on Tiny Aya; C passed here
+(prudence 82.0%, over-conservativeness 2.4%). Aya answers in full sentences, which token F1 scores as wrong
+(the original looked like 23% accurate and G2 had only 69 known items), so every answer F1 rejected was re-graded
+by the judge and all gates recomputed from saved predictions (original 84.7%, 254 known items). Two lessons: the
+original Aya model already abstains rarely (10.5%), so HUMBLE repair leaves it far more honest than before
+fine-tuning; and a release gate must grade answers in the model's own style, or it will under-count over-refusal.
+
 **Lambda scaling (D) cannot repair.** Every lambda from 0.05 to 1.0 is blocked; bluffing rises with lambda, so only
 lambda = 0 (the original) passes, losing the fine-tune's gains. **Two-way DPO**: the first run was invalid because
 AlignTune's DPO `train()` rebuilds the model and silently replaced the repaired adapter with a fresh LoRA (detected
@@ -114,7 +124,8 @@ by recording the adapter actually evaluated, and the DPO adapter was tested once
 
 ## 4. Limitations
 
-* One model (Tiny Aya Global), by design for this release; other Cohere models need their terms accepted.
+* Two models: Tiny Aya Global (all experiments) and Aya Expanse 8B (core recipe only; judge-graded accuracy, and
+  the judge is the same model family). More Cohere models are in progress.
 * The judge filters U4 and U5 heavily (pass rates about 21% and 28%): a sufficiency judge tends to call an edited
   passage "sufficient", so the kept misleading items are those where something looks off even to the judge. U4/U5
   cells are small (28 and 50 test items) and their CIs are wide.

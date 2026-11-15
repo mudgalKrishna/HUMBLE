@@ -24,7 +24,8 @@ accuracy from 52.7% to about 73% but bluffed on every unanswerable question in a
 categories (prudence 40.2% → 0.0%); P(True) confidence did not reveal it. The gate blocked all three. One round of
 HUMBLE repair from the blocked adapter passed the gate on every seed, kept the accuracy gain (about 72%), and raised
 prudence to about 73% with over-conservativeness near 1%; the repaired model also abstained more on Spanish, Hindi
-and Arabic probes and on legal contracts without training on them. We report negative results as pre-registered:
+and Arabic probes and on legal contracts without training on them. The same recipe, unchanged, gave the same result on Aya Expanse 8B
+(naive blocked at 0% prudence; repair passed every seed at 83% prudence and 0.4% over-refusal). We report negative results as pre-registered:
 repair data built from the model's own mistakes did not beat a random sample of the same size and format (random
 data abstained more; targeted data kept about two more points of accuracy), a fresh honest fine-tune (prevention)
 over-refused enough to be blocked on the test set, two-way DPO after repair added prudence but also over-refusal,

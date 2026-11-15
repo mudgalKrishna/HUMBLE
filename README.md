@@ -40,6 +40,12 @@ Track 1 (Fine-tuning and Data Curation), Lexsi AI Safety and Alignment Hackathon
    raised prudence by 3 points but was blocked on test for over-refusal (3.2%). Lambda scaling cannot keep any of
    the fine-tune: bluffing appears already at lambda = 0.05.
 
+6. **The recipe transfers to a second, larger model (Aya Expanse 8B, unchanged recipe).** Naive fine-tuning again
+   removed all abstention (prudence 10.5% → 0.0%) and was blocked; HUMBLE repair passed on every seed with
+   accuracy 90.4% (naive 90.0%, original 84.7%), prudence 82.8% and over-refusal 0.4%; random data again abstained
+   more (88.0%). Aya answers in full sentences, so accuracy and over-refusal there are judge-graded
+   ([results/v3/RESULTS_aya-expanse-8b.md](results/v3/RESULTS_aya-expanse-8b.md)).
+
 Full tables with CIs: [results/v3/RESULTS.md](results/v3/RESULTS.md). Every number is regenerated from saved
 `predictions.jsonl` files by `results/v3/make_report.py`.
 
