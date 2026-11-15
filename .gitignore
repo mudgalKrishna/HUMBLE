@@ -4,3 +4,4 @@ humble_work/
 .pytest_cache/
 *.egg-info/
 work/
+logs/
