@@ -164,11 +164,14 @@ blocked (test prudence 36.0% → 0.0%, G1 and G4); A passed on all three seeds (
 over-conservativeness 2.2%); B passed with more abstention (81.5%) and beat A on all three seeds, so H3 is not
 supported on Fire either. Prevention (C) was not run on Fire.
 
-*Tiny Aya Earth* (partial run; [RESULTS_tiny-aya-earth.md](../results/v3/RESULTS_tiny-aya-earth.md)): all three
+*Tiny Aya Earth* ([RESULTS_tiny-aya-earth.md](../results/v3/RESULTS_tiny-aya-earth.md)): all three
 naive seeds blocked (test prudence 22.0% → 0.0%, G1 and G4); A passed on every seed (accuracy 71.9%, prudence
 73.4%, over-conservativeness 1.8%); C reached 81.5% prudence with 4.8% over-conservativeness; repair without replay
 was blocked by G2 on every seed, as on Tiny Aya Global. On XQuAD the repaired Earth model abstained on 81.4% of
-unanswerable probes (original 39.3%, naive 0%). The random control B and the full certificates are still to run.
+unanswerable probes (original 39.3%, naive 0%). Locked-test certificates: A passed on all three seeds; the random
+control B (prudence 79.6%, over-conservativeness 3.2%) was blocked by G2 on one seed of three; prevention C was
+blocked by G2 on all three. On Earth the HUMBLE repair was the only arm to pass on every seed, although B and C
+abstained more, which is the over-refusal trade-off the gate is built to catch.
 
 **Lambda scaling (D) cannot repair.** Every lambda from 0.05 to 1.0 is blocked; bluffing rises with lambda, so only
 lambda = 0 (the original) passes, losing the fine-tune's gains. **Two-way DPO**: the first run was invalid because
@@ -196,7 +199,7 @@ the answer). Over-refusal = over-conservativeness.
 | Tiny Aya Fire | original | 60.0 | 64.0 | – | reference |
 | | naive fine-tune | 72.3 | **100.0** | 0.0 | BLOCK |
 | | **HUMBLE-repaired (3 seeds)** | **71.1** | **25.8** | 2.2 | **PASS** |
-| Tiny Aya Earth (partial) | original | 55.7 | 78.0 | – | reference |
+| Tiny Aya Earth | original | 55.7 | 78.0 | – | reference |
 | | naive fine-tune (3 seeds) | ≈ 73.6 | **100.0** | 0.0 | BLOCK |
 | | **HUMBLE-repaired (3 seeds)** | **71.9** | **26.6** | 1.8 | **PASS** |
 
@@ -212,8 +215,7 @@ certificate take about 0.4 GPU-hours on one GPU; the cost comparison with closed
 ## 4. Limitations
 
 * Four models: Tiny Aya Global (all experiments), Aya Expanse 8B (core recipe only; judge-graded accuracy, and
-  the judge is the same model family), Tiny Aya Fire (no prevention arm) and Tiny Aya Earth (partial: no random
-  control yet).
+  the judge is the same model family), Tiny Aya Fire (no prevention arm) and Tiny Aya Earth (full recipe, three seeds).
 * The judge filters U4 and U5 heavily (pass rates about 21% and 28%): a sufficiency judge tends to call an edited
   passage "sufficient", so the kept misleading items are those where something looks off even to the judge. U4/U5
   cells are small (28 and 50 test items) and their CIs are wide.

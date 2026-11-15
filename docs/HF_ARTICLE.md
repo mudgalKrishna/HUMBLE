@@ -98,7 +98,7 @@ Locked test. Bluff rate = 100 − prudence; over-refusal = over-conservativeness
 | Tiny Aya Fire | original | 60.0 | 64.0 | – | reference |
 | | naive fine-tune | 72.3 | **100.0** | 0.0 | BLOCK |
 | | **HUMBLE-repaired (3 seeds)** | **71.1** | **25.8** | 2.2 | **PASS** |
-| Tiny Aya Earth (partial run) | original | 55.7 | 78.0 | – | reference |
+| Tiny Aya Earth | original | 55.7 | 78.0 | – | reference |
 | | naive fine-tune (3 seeds) | ≈ 73.6 | **100.0** | 0.0 | BLOCK |
 | | **HUMBLE-repaired (3 seeds)** | **71.9** | **26.6** | 1.8 | **PASS** |
 
@@ -118,7 +118,8 @@ significant on two of three seeds, so we report it as consistent but seed-sensit
 
 * **Targeted repair data did not beat a random sample of the same size and format.** Random data abstained more;
   targeted data kept about two more points of accuracy. This held on Tiny Aya Global, on Fire, and even when repairing
-  an only partly broken model. The format of the repair data (abstain targets + twins + replay) matters more than which
+  an only partly broken model. On Tiny Aya Earth the extra abstention came with over-refusal: random data was blocked
+  on the locked test for one seed of three, and only the HUMBLE repair passed every seed. The format of the repair data (abstain targets + twins + replay) matters more than which
   mistakes it was built from.
 * A fresh honest fine-tune from scratch (prevention) over-refused enough to be blocked on the test set of Tiny Aya Global.
 * Two-way DPO after repair added prudence but also over-refusal, and was blocked.
@@ -136,7 +137,7 @@ company can audit, repair and certify its own model and keep its documents on it
 
 ## Limitations
 
-* The Earth run is partial (its random control is still to run); Fire has no prevention arm.
+* Fire has no prevention arm.
 * U4 and U5 test cells are small (28 and 50 items); the judge filters them hard.
 * The judge (Aya Expanse 8B) is validated by agreement checks, but its 100-item human-label validation is still open.
 * XQuAD paragraphs are translations of SQuAD paragraphs whose English originals may appear in our pools.

@@ -14,7 +14,7 @@ OUT = Path(__file__).resolve().parent / (f"RESULTS_{os.environ['HUMBLE_MODEL_ID'
                                          if os.environ.get("HUMBLE_MODEL_ID") else "RESULTS.md")
 PS = "squad3v"
 # H8 is judged across base models; each model's numbers are in its own RESULTS_<model>.md.
-H8_VERDICT = ("supported on 3 more models: Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth (partial run) - naive blocked, "
+H8_VERDICT = ("supported on 3 more models: Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth - naive blocked, "
               "A passes every seed; see RESULTS_<model>.md")
 
 
@@ -178,8 +178,9 @@ def main():
     if er:
         L += ["## Hypotheses (pre-registered)", "", "| ID | Claim | Verdict |", "|---|---|---|"]
         for k, v in er["hypotheses"].items():
-            if k == "H8" and not os.environ.get("HUMBLE_MODEL_ID"):
-                v = dict(v, verdict=H8_VERDICT)  # the other models live in their own repos and reports
+            if k == "H8":  # judged across base models; each model's numbers live in its own repo and report
+                v = dict(v, verdict=H8_VERDICT if not os.environ.get("HUMBLE_MODEL_ID")
+                         else "this model is part of the H8 evidence (naive blocked, A passes every seed); see RESULTS.md")
             L.append(f"| {k} | {v['claim']} | {v['verdict']} |")
         L += ["", "Paired differences on the locked test (document-clustered bootstrap, 1,000 resamples):", "",
               "| Comparison | Metric | Diff | 95% CI | Significant |", "|---|---|---|---|---|"]

@@ -30,7 +30,7 @@ Bluff rate = share of unanswerable questions answered anyway (100 − prudence).
 | Tiny Aya Global | 52.7 / 59.8 | 73.3 / **100.0** (BLOCK) | **72.3 / 27.3 / 1.7 (PASS, 3 seeds)** |
 | Aya Expanse 8B | 84.7 / 89.5 | 90.0 / **100.0** (BLOCK) | **90.4 / 17.2 / 0.4 (PASS, 3 seeds)** |
 | Tiny Aya Fire | 60.0 / 64.0 | 72.3 / **100.0** (BLOCK) | **71.1 / 25.8 / 2.2 (PASS, 3 seeds)** |
-| Tiny Aya Earth (partial) | 55.7 / 78.0 | 73.6 / **100.0** (BLOCK) | **71.9 / 26.6 / 1.8 (PASS, 3 seeds)** |
+| Tiny Aya Earth | 55.7 / 78.0 | 73.6 / **100.0** (BLOCK) | **71.9 / 26.6 / 1.8 (PASS, 3 seeds)** |
 
 ## What we found (locked test, Tiny Aya Global, multi-passage RAG probes)
 
@@ -72,9 +72,11 @@ Bluff rate = share of unanswerable questions answered anyway (100 − prudence).
    blocked (prudence 36.0% → 0.0%) and HUMBLE repair passed on every seed (accuracy 71.1%, prudence 74.2%,
    over-refusal 2.2%); the random control B again abstained more (81.5%) and beat A on all three seeds, so H3 is
    not supported on Fire either; prevention (C) was not run
-   ([results/v3/RESULTS_tiny-aya-fire.md](results/v3/RESULTS_tiny-aya-fire.md)). On Tiny Aya Earth (partial run)
-   all three naive seeds were blocked (prudence 22.0% → 0.0%) and A passed on every seed (accuracy 71.9%,
-   prudence 73.4%, over-refusal 1.8%); its random control B is still to run
+   ([results/v3/RESULTS_tiny-aya-fire.md](results/v3/RESULTS_tiny-aya-fire.md)). On Tiny Aya Earth
+   all three naive seeds were blocked (prudence 22.0% → 0.0%) and A passed on every seed, val and locked-test
+   certificates alike (accuracy 71.9%, prudence 73.4%, over-refusal 1.8%). Random data (B, 79.6% prudence) and
+   prevention (C, 81.5%) abstained more but over-refused: B was blocked on the test set for one seed of three and C
+   for all three (G2), so on Earth only the HUMBLE repair passed every seed
    ([results/v3/RESULTS_tiny-aya-earth.md](results/v3/RESULTS_tiny-aya-earth.md)).
 
 8. **Upweighting the weak categories helps, but is seed-sensitive (Fix 2, Tiny Aya Global, teammate run).**
