@@ -28,7 +28,8 @@ def _check_model_repo(c):
     """Audit names (original, naive_s31, ...) are not namespaced by model, so every base model needs its own
     Hub repo; otherwise a run could silently gate against another model's `original` audit."""
     from .hub import read_repos
-    if c["model"]["base_id"] != "CohereLabs/tiny-aya-global" and any(r.startswith("KM2007/humble-") for r in read_repos(c)):
+    tiny = lambda r: r in ("KM2007/humble-runs", "KM2007/humble-v3") or r.startswith("KM2007/humble-v3-")
+    if c["model"]["base_id"] != "CohereLabs/tiny-aya-global" and any(tiny(r) for r in read_repos(c)):
         raise RuntimeError("base model is not Tiny Aya Global but the Hub repos are the Tiny Aya ones: set "
                            "HUMBLE_HF_REPO=<you>/humble-<model>, HUMBLE_LEGACY_REPO=none, HUMBLE_PER_NODE=false")
 
@@ -457,6 +458,40 @@ def judge_rescore(J, probe_set, names, split="test", min_gold_words=4):
         out[name] = {"regraded": len(todo), "flipped_to_correct": flips, "accuracy_judged": mets["overall"]["accuracy"]}
     jd.free()
     return out
+
+
+def regate_judged(J, probe_set, names, splits=("val", "test"), profile="support", min_gold_words=1):
+    """For models that answer in full sentences: judge-grade every answer token F1 marked wrong (M9), then rebuild
+    the original's known set and recompute each gate from the saved predictions. No new generation, so the
+    test-once rule is untouched. Writes predictions_judged.jsonl, metrics_judged.json, gate_<profile>_judged.json."""
+    from . import gate as G
+    from .audit.run import read_predictions
+    from .config import profile as get_profile
+    prof = get_profile(profile, cfg())
+    names = ["original"] + [n for n in names if n != "original"]
+    out = {}
+    for split in splits:
+        have = [n for n in names if _has_split(probe_set, n, split)]
+        out[f"{split}/rescore"] = judge_rescore(J, probe_set, have, split=split, min_gold_words=min_gold_words)
+        orig = read_predictions(_audit_dir(probe_set, "original", split) / "predictions_judged.jsonl")
+        for n in have:
+            if n == "original":
+                continue
+            d = _audit_dir(probe_set, n, split)
+            g = G.evaluate(orig, read_predictions(d / "predictions_judged.jsonl"), prof)
+            g["grading"] = f"judge-regraded (min_gold_words={min_gold_words})"
+            G.write(g, d / f"gate_{prof['name']}_judged.json")
+            hub.push(d / f"gate_{prof['name']}_judged.json", f"v3/audits/{probe_set}/{n}/{split}/gate_{prof['name']}_judged.json", cfg())
+            out[f"{split}/{n}"] = {"decision": g["decision"], "failed_rules": g["failed_rules"], "n_known": g.get("n_known")}
+    return out
+
+
+def _has_split(probe_set, name, split):
+    try:
+        _get_preds(probe_set, name, split)
+        return True
+    except Exception:
+        return False
 
 
 # ------------------------------------------------------------------ product mode: probes from company documents
