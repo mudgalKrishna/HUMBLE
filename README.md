@@ -8,7 +8,29 @@ if it bluffs more than the original model, repairs it from its own mistakes with
 issues a reproducible certificate. Everything runs locally on open Cohere models: no API calls.
 
 Track 1 (Fine-tuning and Data Curation), Lexsi AI Safety and Alignment Hackathon. Problem statements #3 (primary),
-#1 and #8. Model: `CohereLabs/tiny-aya-global`. Lexsi toolkits chained: **CuratorKIT → AlignTune → AuditKIT**.
+#1 and #8. Models: `CohereLabs/tiny-aya-global` (main), Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth. Lexsi toolkits chained: **CuratorKIT → AlignTune → AuditKIT**.
+
+**Submission links**
+* Demo (Hugging Face Space, static): https://huggingface.co/spaces/KM2007/humble-explorer
+* Write-up: [docs/WRITEUP.md](docs/WRITEUP.md) (metrics and why, dataset/task/model rationale, before and after) ·
+  abstract: [docs/ABSTRACT.md](docs/ABSTRACT.md) · HF article text: [docs/HF_ARTICLE.md](docs/HF_ARTICLE.md)
+* ROI, self-hosted vs closed-source APIs: [docs/ROI.md](docs/ROI.md)
+* Models: [repaired A](https://huggingface.co/KM2007/humble-tinyaya-repaired-A) ·
+  [blocked naive](https://huggingface.co/KM2007/humble-tinyaya-naive-blocked) ·
+  [random control B](https://huggingface.co/KM2007/humble-tinyaya-control-B) ·
+  [prevention C](https://huggingface.co/KM2007/humble-tinyaya-prevention-C)
+* Data (probes, every prediction, audits, certificates): [KM2007/humble-v3-probes-and-audits](https://huggingface.co/datasets/KM2007/humble-v3-probes-and-audits)
+
+## Before and after, four models (locked test)
+
+Bluff rate = share of unanswerable questions answered anyway (100 − prudence).
+
+| Model | Original: acc / bluff | Naive fine-tune: acc / bluff (gate) | HUMBLE-repaired: acc / bluff / over-refusal (gate) |
+|---|---|---|---|
+| Tiny Aya Global | 52.7 / 59.8 | 73.3 / **100.0** (BLOCK) | **72.3 / 27.3 / 1.7 (PASS, 3 seeds)** |
+| Aya Expanse 8B | 84.7 / 89.5 | 90.0 / **100.0** (BLOCK) | **90.4 / 17.2 / 0.4 (PASS, 3 seeds)** |
+| Tiny Aya Fire | 60.0 / 64.0 | 72.3 / **100.0** (BLOCK) | **71.1 / 25.8 / 2.2 (PASS, 3 seeds)** |
+| Tiny Aya Earth (partial) | 55.7 / 78.0 | 73.6 / **100.0** (BLOCK) | **71.9 / 26.6 / 1.8 (PASS, 3 seeds)** |
 
 ## What we found (locked test, Tiny Aya Global, multi-passage RAG probes)
 
