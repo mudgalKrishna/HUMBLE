@@ -13,11 +13,34 @@ AlignTune SFT.
 """
 from __future__ import annotations
 
+import functools
 import json
 import shutil
 from pathlib import Path
 
-from ..config import load_config, model_source
+from ..config import load_config, model_source, path
+
+
+def _one_gpu_training_at_a_time(fn):
+    """Parallel jobs on one GPU (scripts/*_parallel.sh) can audit together, but two LoRA trainings at
+    3072 tokens OOM a 96 GB card. Serialise training with a file lock in HUMBLE_HOME/state, and hand the
+    memory back (PyTorch keeps it cached in this process otherwise) before the next job takes the lock."""
+    @functools.wraps(fn)
+    def wrap(*args, **kwargs):
+        import fcntl
+        import gc
+        lock = path("state", kwargs.get("cfg") or load_config()) / "gpu_train.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock, "w") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                gc.collect()
+                if _cuda():
+                    import torch
+                    torch.cuda.empty_cache()
+    return wrap
 
 
 def _pc_dataset(messages_file, max_items=None):
@@ -36,6 +59,7 @@ def _pc_dataset(messages_file, max_items=None):
     return Dataset.from_list(rows)
 
 
+@_one_gpu_training_at_a_time
 def sft(messages_file, out_dir, *, init_adapter=None, lr=None, epochs=None, seed=1, batch_size=None, grad_accum=None,
         max_steps=None, cfg=None, log=None, base=None):
     """LoRA SFT with AlignTune's TRL backend. With init_adapter, training continues that adapter."""
@@ -94,6 +118,7 @@ def _guard_flash_attn_namespace():
         pass
 
 
+@_one_gpu_training_at_a_time
 def dpo(dpo_file, out_dir, *, init_adapter, lr=None, epochs=None, beta=None, seed=1, cfg=None, log=None, base=None):
     """Optional gentle two-way DPO (ABSTAIN > bluff; answer > unneeded ABSTAIN) continuing an adapter."""
     from aligntune.core.backend_factory import create_rl_trainer
