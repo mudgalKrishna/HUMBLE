@@ -117,6 +117,33 @@ def build_squad_probes(J, probe_set="squad3v", reuse_descriptors_from="squad3", 
 
 
 # ------------------------------------------------------------------ smoke test of the training path
+def build_u45_probes(J, probe_set="squad3u45", n=150, judge_model=None):
+    """Fix 2: larger U4/U5 test set (>= 100 judged items each) from articles outside squad3v val/test.
+    Never touches squad3v. Evaluate with audit_candidate(J, name, split="test", probe_set="squad3u45")."""
+    from .probes import squad
+    from . import judge as JG
+    out = path("probes", cfg()) / probe_set
+    if (out / "MANIFEST.json").exists():
+        J.log("probe set exists; skipping build")
+        return json.loads((out / "MANIFEST.json").read_text())
+    excl = [_probe_dir("squad3"), _probe_dir("squad3v")]
+    desc = json.loads((excl[1] / "descriptors.json").read_text(encoding="utf-8"))
+    used = squad.used_paragraph_texts(_used_paragraph_dirs())
+    jm = judge_model or cfg()["judge"]["model_id"]
+    judge = JG.Judge(jm, token=os.environ.get("HF_TOKEN"))
+    J.log(f"judge loaded: {jm}")
+    m = squad.build_u45(out, cfg(), desc, excl, probe_set=probe_set, n=n, used_texts=used,
+                        verify_fn=lambda items: JG.verify(items, judge.sufficiency(items)))
+    m["judge_model"] = jm
+    (out / "MANIFEST.json").write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
+    judge.free()
+    for cell, c in m["cells"].items():
+        if c["built"] < 100:
+            J.log(f"WARNING {cell}: only {c['built']} judged items (< 100); raise n or overgenerate")
+    hub.push(out, f"v3/probes/{probe_set}", cfg())
+    return {"cells": m["cells"], "judge": m.get("judge"), "test_lock": m["test_lock_sha256"]}
+
+
 def smoke_train(J):
     """Tiny end-to-end check: CuratorKIT -> AlignTune SFT -> continue adapter -> DPO -> merge vs LoRA scale."""
     import torch
