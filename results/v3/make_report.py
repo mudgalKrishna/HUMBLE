@@ -17,7 +17,9 @@ PS = "squad3v"
 
 def fetch():
     own = os.environ.get("HUMBLE_HF_REPO")  # set when reporting another base model (its own repo)
-    repos = [own] if own else ["KM2007/humble-runs", "KM2007/humble-v3"] + [f"KM2007/humble-v3-nb{i}" for i in range(1, 9)]
+    # per-node repos (<repo>-nb<i>) hold the parallel notebooks' outputs for every base model
+    repos = ([own] + [f"{own}-nb{i}" for i in range(1, 9)] if own
+             else ["KM2007/humble-runs", "KM2007/humble-v3"] + [f"KM2007/humble-v3-nb{i}" for i in range(1, 9)])
     for rid in repos:
         try:
             snapshot_download(rid, repo_type="dataset", local_dir=str(DL), token=os.environ.get("HF_TOKEN"),
