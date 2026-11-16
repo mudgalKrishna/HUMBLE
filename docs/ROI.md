@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/humble_wordmark.svg" alt="HUMBLE" width="520"></p>
+
 # ROI: a HUMBLE-repaired Tiny Aya, self-hosted, vs closed-source APIs
 
 Every input is either **measured** in this project or a **stated assumption** that a company can replace with its

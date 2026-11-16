@@ -1,12 +1,14 @@
+<p align="center"><img src="assets/humble_wordmark.svg" alt="HUMBLE" width="520"></p>
+
 # HUMBLE: catch and repair bluffing in fine-tuned RAG models before deployment
 
 **Track 1 (Fine-tuning and Data Curation).** Problem statements #3 (primary), #1, #8. Models: Tiny Aya Global (main),
 Aya Expanse 8B, Tiny Aya Fire and Tiny Aya Earth, all open Cohere Labs models run locally. Lexsi toolkits:
 CuratorKIT → AlignTune → AuditKIT.
 
-Companies put assistants on top of their own documents (RAG) and often fine-tune the model for their domain.
-Search is imperfect, so the retrieved passages often do not contain the answer, and a good model should then say it
-cannot answer. We show that ordinary fine-tuning removes this habit, and that normal accuracy checks miss it.
+A standard fine-tune made four out of four Cohere models answer 100% of the questions their documents could not
+answer, while accuracy went up, so every normal eval approved them. Companies build assistants on their own documents
+and fine-tune them exactly this way, and retrieval often misses, so this is the model that reaches their customers.
 
 HUMBLE is a local release check for fine-tuned RAG models. It builds test questions from a company's documents, each
 with four passages, including five kinds of question the passages cannot answer (missing fact, unknown entity, false

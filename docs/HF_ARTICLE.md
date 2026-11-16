@@ -4,6 +4,9 @@ authors:
 - user: KM2007
 ---
 
+<p align="center"><img src="https://huggingface.co/spaces/KM2007/humble-explorer/resolve/main/humble_wordmark.svg" alt="HUMBLE" width="560"></p>
+
+
 # HUMBLE: your fine-tuned RAG model learned to bluff. Catch it before release, then repair it.
 
 *Lexsi AI Safety and Alignment Hackathon, Track 1 (Fine-tuning and Data Curation). Built with Lexsi's CuratorKIT →

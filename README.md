@@ -1,28 +1,42 @@
-# HUMBLE
+<p align="center"><img src="docs/assets/humble_wordmark.svg" alt="HUMBLE" width="760"></p>
 
-**A release check for fine-tuned RAG models: it catches a model that makes up answers when its documents don't have
-them, blocks it, and repairs it.**
+<h3 align="center">Your fine-tuned model just passed every eval.<br>It also makes up an answer every single time your documents don't have one.<br>HUMBLE catches it before you ship, and fixes it in 15 minutes.</h3>
 
-Track 1 (Fine-tuning and Data Curation), Lexsi AI Safety and Alignment Hackathon.
-Built on Lexsi's **CuratorKIT**, **AlignTune** and **AuditKIT**, and on open **Cohere Labs** models. Everything runs
-locally on one GPU, with no API calls.
+<p align="center">
+<a href="https://huggingface.co/spaces/KM2007/humble-explorer"><b>Live demo</b></a> ·
+<a href="docs/WRITEUP.md">Write-up</a> ·
+<a href="https://huggingface.co/KM2007/humble-tinyaya-repaired-A">Repaired model</a> ·
+<a href="https://huggingface.co/datasets/KM2007/humble-v3-probes-and-audits">Every prediction</a> ·
+<a href="docs/ROI.md">ROI</a>
+</p>
 
-[Live demo](https://huggingface.co/spaces/KM2007/humble-explorer) ·
-[Write-up](docs/WRITEUP.md) ·
-[Repaired model](https://huggingface.co/KM2007/humble-tinyaya-repaired-A) ·
-[Data and every prediction](https://huggingface.co/datasets/KM2007/humble-v3-probes-and-audits) ·
-[ROI](docs/ROI.md)
+<p align="center">Track 1 · Lexsi AI Safety and Alignment Hackathon · built on Lexsi <b>CuratorKIT</b>, <b>AlignTune</b>, <b>AuditKIT</b> and open <b>Cohere Labs</b> models · runs on one GPU, no API</p>
 
 <p align="center"><img src="docs/assets/humble_terminal.svg" alt="HUMBLE terminal: the gate blocks the naive fine-tune, repair passes, a certificate is written" width="900"></p>
 
-## The problem
+## The failure nobody is measuring
 
-Companies fine-tune a model on their own question-answer data and put it behind a search over their documents (RAG).
-Search often brings back passages that don't contain the answer. A good model should then say so.
+Every company building an assistant on its own documents does the same two things: retrieve passages, and fine-tune
+the model on its own Q&A data. Retrieval misses all the time. When it does, the model should say "I can't answer that
+from these documents."
 
-We found that ordinary fine-tuning removes that habit. On **four out of four** Cohere models, a standard fine-tune
-made the model answer **100%** of questions its passages could not answer. At the same time accuracy went **up**
-(for example 52.7% → 73.7% on Tiny Aya Global), so a normal accuracy check would approve the model for release.
+**Fine-tuning quietly deletes that instinct.** We fine-tuned four Cohere models the standard way. All four went from
+sometimes saying "I don't know" to answering **100%** of the questions their documents could not answer, with made-up
+answers, on every seed. And accuracy went **up** by up to 21 points, so every normal eval says the model got better
+and ships it.
+
+That is the model that ends up in front of customers in support, legal, finance and health: confidently wrong, and
+graded as an improvement.
+
+**HUMBLE is the release check for exactly this failure, plus the fix.**
+
+| | Normal fine-tune | After HUMBLE |
+|---|---|---|
+| Answers questions its documents can't support | **100%** on 4 of 4 models | **17–27%**, less than the original model |
+| Accuracy gained from fine-tuning | kept | kept (within 1–2 points) |
+| Refuses questions it should answer | 0% | 0.4–2.2% |
+| Release decision | BLOCK, every seed | PASS, every seed |
+| Cost | | about 15 minutes on one GPU, fully local |
 
 ## What HUMBLE does
 
@@ -54,29 +68,65 @@ In short: the repair keeps the accuracy gained from fine-tuning (within 1–2 po
 than even the original model did, and keeps needless refusals at 0.4–2.2%. The repaired Tiny Aya also refuses more
 often on Spanish, Hindi and Arabic questions and on legal contracts, which it was never trained on.
 
-<details>
-<summary><b>All findings, including what did not work</b></summary>
+## Detailed findings (locked test; the arm-by-arm table is Tiny Aya Global)
 
-* **The gate caught every bad fine-tune** on all four models and all seeds, and its self-checks behave as designed
-  (the original model against itself passes; an always-refuse model and an always-answer model are blocked).
-* **What keeps the repaired model from over-refusing:** mixing in normal training data 1:1. Without it, repair was
-  blocked on every seed for refusing too much (about 17% needless refusals). Pairing each "I can't answer"
-  example with an answerable twin helps a bit more.
-* **Random repair data worked as well as targeted data.** Building the repair set from the model's own mistakes did
-  not beat a random sample of the same size on cost (pre-registered hypothesis H3 not supported). The format of the
-  repair data matters more than which mistakes it came from. On Tiny Aya Earth, though, both alternatives refused too often: the random
-  version was blocked on the test set for one seed of three and a fresh honest fine-tune for all three, while the
-  HUMBLE repair passed every seed.
-* **Other fixes we tried:** training an honest model from scratch was blocked on the test set for over-refusing on
-  Tiny Aya Global and Earth; adding a preference-training step (DPO) after repair added refusals and was blocked;
-  scaling down the fine-tune's weights could not remove the bluffing without removing the fine-tune.
-* **Model confidence does not reveal the bluffing**, so the gate looks at behaviour on unanswerable questions.
-* **Upweighting the weakest question types** raised their refusal rate (72.6% → 77.3%), but the gain was significant
-  on two of three seeds only.
+| Model | Accuracy | Prudence (abstains on unanswerable) | Gate |
+|---|---|---|---|
+| Original Tiny Aya | 52.7% | 40.2% | reference |
+| Naive fine-tune (3 seeds) | ~73% | **0.0%** | **BLOCK** (G1 bluffing, G4 every category) |
+| HUMBLE repair loop, from the blocked model (A) | 72.3% | 72.7% | **PASS** after 1 round, every seed (val and test) |
+| Random-data repair, same size (B) | 70.8% | 79.6% | PASS, every seed |
+| Prevention: fresh honest fine-tune (C, 3 seeds) | 70.4% | 80.0% | PASS on val, **BLOCK on test** (G2: over-refusal 3.8–5.1%) |
+| Training-free lambda scaling (D) | – | – | only lambda = 0 (the original) passes |
 
-Full tables with confidence intervals: [results/v3/RESULTS.md](results/v3/RESULTS.md) and one file per model in
-[results/v3/](results/v3/).
-</details>
+1. **Fine-tuning made the model bluff on every unanswerable question**, in all three seeds and all five
+   unanswerable categories, while accuracy rose by 20 points. P(True) confidence did not reveal it (H2).
+2. **The gate caught it** with label-based rules (no reliance on model confidence), and its self-controls behave
+   as designed across four domain profiles.
+3. **Repair rescues the broken fine-tune in one round**: bluffing falls from 100% to about 28%, the accuracy
+   gain is kept, over-conservativeness stays near 1%. The repair transfers to Spanish/Hindi/Arabic (XQuAD) and to
+   legal contracts (CUAD) without training on them.
+4. **What protects against over-refusal (ablations, 3 seeds each).** Without replay of ordinary training data,
+   repair over-refuses: blocked on G2 in every seed, test over-conservativeness about 18% and accuracy 58%. Without
+   the answerable twins, all seeds pass on val but 2 of 3 are blocked on the locked test (over-conservativeness
+   3.6% vs 1.7% with twins). Replay is the main protection; twins add a smaller one.
+5. **Honest negative results.** Repair data built from the model's own mistakes did *not* beat a random
+   sample of the same size (H3 not supported): targeted data keeps ~2 points more accuracy, random data abstains
+   more. This also held when repairing an only partly broken model, whose mistakes are a real subset
+   ([results/v3/FIX1_TARGETING.md](results/v3/FIX1_TARGETING.md)). A had lower over-refusal than prevention on every seed but significantly so on only one (H4 not supported
+   under the pre-registered rule), although C is the one blocked on test. Adding two-way DPO after repair
+   raised prudence by 3 points but was blocked on test for over-refusal (3.2%). Lambda scaling cannot keep any of
+   the fine-tune: bluffing appears already at lambda = 0.05.
+
+6. **The recipe transfers to a larger model (Aya Expanse 8B, unchanged recipe).** Naive fine-tuning again
+   removed all abstention (prudence 10.5% → 0.0%) and was blocked; HUMBLE repair passed on every seed with
+   accuracy 90.4% (naive 90.0%, original 84.7%), prudence 82.8% and over-refusal 0.4%; random data again abstained
+   more (88.0%). Aya answers in full sentences, so accuracy and over-refusal there are judge-graded
+   ([results/v3/RESULTS_aya-expanse-8b.md](results/v3/RESULTS_aya-expanse-8b.md)).
+
+7. **And to two more Tiny Aya models (Fire and Earth).** On Tiny Aya Fire (teammate run) naive fine-tuning was
+   blocked (prudence 36.0% → 0.0%) and HUMBLE repair passed on every seed (accuracy 71.1%, prudence 74.2%,
+   over-refusal 2.2%); the random control B again abstained more (81.5%) and beat A on all three seeds, so H3 is
+   not supported on Fire either; prevention (C) was not run
+   ([results/v3/RESULTS_tiny-aya-fire.md](results/v3/RESULTS_tiny-aya-fire.md)). On Tiny Aya Earth
+   all three naive seeds were blocked (prudence 22.0% → 0.0%) and A passed on every seed, val and locked-test
+   certificates alike (accuracy 71.9%, prudence 73.4%, over-refusal 1.8%). Random data (B, 79.6% prudence) and
+   prevention (C, 81.5%) abstained more but over-refused: B was blocked on the test set for one seed of three and C
+   for all three (G2), so on Earth only the HUMBLE repair passed every seed
+   ([results/v3/RESULTS_tiny-aya-earth.md](results/v3/RESULTS_tiny-aya-earth.md)).
+
+8. **Upweighting the weak categories helps, but is seed-sensitive (Fix 2, Tiny Aya Global, teammate run).**
+   Repeating the U3/U4/U5 repair examples (Acat) raised prudence on squad3v from 72.6% to 77.3% and on a new
+   U4/U5 test set (squad3u45, 300 items from paragraphs no earlier prompt showed) from 33.9% to 42.2%, with about
+   the same accuracy and about 0.8 points more unnecessary abstention. The gain is significant on seeds 31 and 33
+   but not 32: consistent, but not a pass under the every-seed rule. Caveats: the blocked model is a retrain
+   (`naive_s31b`), and squad3u45 does not exclude paragraphs from earlier iterations
+   ([results/v3/FIX2_CATEGORIES.md](results/v3/FIX2_CATEGORIES.md),
+   [results/v3/RESULTS_fix2_categories.md](results/v3/RESULTS_fix2_categories.md)).
+
+Full tables with CIs: [results/v3/RESULTS.md](results/v3/RESULTS.md). Every number is regenerated from saved
+`predictions.jsonl` files by `results/v3/make_report.py`.
+
 
 ## How we used Lexsi's toolkits and Cohere's models
 
@@ -123,6 +173,7 @@ humble audit  --probes ./probes --out ./audits/original
 humble audit  --probes ./probes --adapter ./my_finetune --original-audit ./audits/original --out ./audits/my_finetune
 humble gate   ./audits/original ./audits/my_finetune --profile finance        # exit 0 = PASS, 1 = BLOCK
 humble repair --blocked ./my_finetune --probes ./probes --original-audit ./audits/original --out ./adapters/repaired
+humble certify ./audits/my_finetune --gate ./audits/my_finetune/gate.json --out ./certificates
 ```
 
 `gate`, `selfcheck` and `certify` run on CPU; the other commands need a GPU.
@@ -160,6 +211,22 @@ flowchart LR
 * **Repair**: find the questions the model bluffs on (five samples each), train it to refuse those, train it to answer
   their answerable twins, add verified variants, mix in normal training data 1:1, retrain one epoch, check again.
   Up to three rounds; one was enough every time.
+
+Technical detail:
+
+* **Probes** (RAG-style, 4 passages each): C1 gold + distractors (answer), C2 distractors only, C3 answer sentence
+  deleted, C4 misleading edit of the gold passage (abstain); unanswerable categories U1 missing fact, U2 out of
+  database, U3 false premise, U4 underspecified, U5 misleading evidence. Mechanically verified, then checked by a
+  local sufficient-context judge (Aya Expanse 8B). Split by document; the test set is hash-locked and evaluated once.
+* **Audit**: greedy answers in `ANSWER: <text>` / `ABSTAIN` format, scored by AuditKIT (SQuAD-style F1), honesty
+  metrics from Alignment for Honesty (prudence, over-conservativeness, honesty score), cost score with
+  domain-profile weights, document-clustered bootstrap CIs, per category / context / language.
+* **Gate v2**: G1 bluffing (paired CI), G2 over-refusal, G3 accuracy, G4 per-category prudence, G5 format, with
+  thresholds from domain profiles (healthcare, finance, legal, support). Exit codes 0 / 1 / 2.
+* **Repair loop**: multisample diagnosis of the blocked model on a separate probe pool; repair set = each bluff →
+  ABSTAIN, its answerable twin → gold, delete-a-fact and misleading variants → ABSTAIN, RAFT's no-gold case flipped to
+  ABSTAIN, over-refusals → gold, 1:1 replay; curated by CuratorKIT; continue the blocked LoRA adapter with AlignTune
+  SFT; re-gate on val; up to 3 rounds.
 </details>
 
 ## Repository
@@ -173,6 +240,11 @@ flowchart LR
 | `data/` | the locked test questions shared by every run, and the judge label sheet |
 | `docs/` | write-up, abstract, ROI, HF article text, and the pre-registered project plan |
 | `scripts/` | `reproduce.py`, plus the scripts used for the parallel notebook runs |
+
+## Reproducibility
+
+Each audit folder stores `audit.toml` (model, adapter hash, probe hash, test lock, config hash, versions),
+`predictions.jsonl`, `metrics.json`, the AuditKIT run, and gate files; any gate can be recomputed on CPU.
 
 ## Team and licences
 

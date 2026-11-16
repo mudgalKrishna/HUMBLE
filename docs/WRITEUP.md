@@ -1,4 +1,11 @@
+<p align="center"><img src="assets/humble_wordmark.svg" alt="HUMBLE" width="560"></p>
+
 # HUMBLE write-up
+
+> **The short version.** A standard fine-tune made four out of four Cohere models answer 100% of the questions their
+> documents could not answer, while accuracy went up, so every normal eval approved them. HUMBLE is the release
+> check that blocks such a model, and a 15-minute repair that brings the bluff rate down to 17–27% (lower than the
+> original model) while keeping the accuracy gain.
 
 **Catch and repair bluffing in fine-tuned RAG models before deployment.** Track 1 (Fine-tuning and Data Curation),
 Lexsi AI Safety and Alignment Hackathon. Models: Tiny Aya Global (main), Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth,
