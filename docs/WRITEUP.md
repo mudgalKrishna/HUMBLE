@@ -1,7 +1,8 @@
 # HUMBLE write-up
 
 **Catch and repair bluffing in fine-tuned RAG models before deployment.** Track 1 (Fine-tuning and Data Curation),
-Lexsi AI Safety and Alignment Hackathon. Model: CohereLabs/tiny-aya-global. Toolkits: CuratorKIT → AlignTune → AuditKIT.
+Lexsi AI Safety and Alignment Hackathon. Models: Tiny Aya Global (main), Aya Expanse 8B, Tiny Aya Fire, Tiny Aya Earth,
+all open Cohere Labs models run locally. Lexsi toolkits: CuratorKIT → AlignTune → AuditKIT (how we used each: section 2b).
 All tables: [results/v3/RESULTS.md](../results/v3/RESULTS.md) (generated from saved predictions).
 
 ## 1. Problem
@@ -89,6 +90,17 @@ sizes, target ratio, replay and steps, C prevention (fresh honest SFT with 30% u
 AlignTune merge; A, B, C with three seeds. Ablations: A without twins, A without replay, A + two-way DPO, A on two
 other blocked seeds. External, evaluation only: XQuAD (es, hi, ar), CUAD contracts, and a product-mode probe set
 generated with CuratorKIT from a fictional company's 44 policy documents.
+
+## 2b. How we used Lexsi's toolkits and Cohere's models
+
+| Tool or model | What we used it for | How much it did for us |
+|---|---|---|
+| **CuratorKIT** | Every training set passes through it before training: schema check, exact duplicate removal and a provenance record. Its QA generator and hallucination gate build test questions from a company's documents (`humble probe`), using a local model. | All SFT and DPO data in the project (naive, prevention, every repair round, the DPO arm) went through it, so each adapter can be traced to the exact data it saw. One thing we learned: its exact dedup removes plain repeats, so upweighting needed each copy to show the passages in a different order. |
+| **AlignTune** | All LoRA training through its TRL backend (`create_sft_trainer`), the DPO arm (`create_rl_trainer`) and the weight-scaling arm (`merge_models`). | About 70 training runs on four models went through one training function. It also exposed a real problem: its DPO step rebuilt the model and silently replaced our repaired adapter with a fresh one. We caught it from the adapter weight norms (0.19 instead of 4.49), fixed our wrapper, and re-ran the arm. |
+| **AuditKIT** | Scores every answer (normalised F1, abstain, format error, honest), fingerprints each run, and gives a paired significance test (`RunComparison`) that we use to cross-check our own bootstrap. | Every audit folder stores its AuditKIT run record; there are 113 in the public dataset alone, and any gate decision can be recomputed from them on CPU (`scripts/reproduce.py`). |
+| **Tiny Aya Global** (3.35B) | Main model for all experiments and ablations. | Small enough to fine-tune and host on one GPU; its multilingual training let us test transfer to Spanish, Hindi and Arabic. |
+| **Aya Expanse 8B** | Local judge (does a probe's context contain the answer; are two answers equivalent) and a fourth model for the core recipe. | Kept the whole pipeline local with no API; showed the recipe works on a larger model that answers in full sentences. |
+| **Tiny Aya Fire and Earth** | The unchanged recipe on two more models. | Showed the result is not tied to one checkpoint (H8). |
 
 ## 3. Results
 

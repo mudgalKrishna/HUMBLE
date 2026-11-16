@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="470" viewBox="0 0 980 470" role="img" aria-label="HUMBLE gate blocks the naive fine-tune, repair passes, certificate written">
+<title>HUMBLE: block, repair, certify</title>
+<defs>
+  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="#000" opacity=".28"/></pattern>
+  <radialGradient id="vig" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".55"/></radialGradient>
+  <filter id="glow" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<style>
+  text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:14.5px;white-space:pre}
+  @keyframes l0{0%{opacity:1}4.0%,7.78%{opacity:0}9.17%,100%{opacity:1}}@keyframes l1{0%{opacity:1}4.0%,14.44%{opacity:0}15.83%,100%{opacity:1}}@keyframes l2{0%{opacity:1}4.0%,16.67%{opacity:0}18.06%,100%{opacity:1}}@keyframes l3{0%{opacity:1}4.0%,18.89%{opacity:0}20.28%,100%{opacity:1}}@keyframes l4{0%{opacity:1}4.0%,21.11%{opacity:0}22.50%,100%{opacity:1}}@keyframes l5{0%{opacity:1}4.0%,23.33%{opacity:0}24.72%,100%{opacity:1}}@keyframes l6{0%{opacity:1}4.0%,27.22%{opacity:0}28.61%,100%{opacity:1}}@keyframes l7{0%{opacity:1}4.0%,36.67%{opacity:0}38.06%,100%{opacity:1}}@keyframes l8{0%{opacity:1}4.0%,43.89%{opacity:0}45.28%,100%{opacity:1}}@keyframes l9{0%{opacity:1}4.0%,47.78%{opacity:0}49.17%,100%{opacity:1}}@keyframes l10{0%{opacity:1}4.0%,53.33%{opacity:0}54.72%,100%{opacity:1}}@keyframes l11{0%{opacity:1}4.0%,62.22%{opacity:0}63.61%,100%{opacity:1}}@keyframes l12{0%{opacity:1}4.0%,67.78%{opacity:0}69.17%,100%{opacity:1}}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes flick{0%,100%{opacity:.97}50%{opacity:1}}
+  .cur{animation:blink 1s steps(1) infinite}
+  .crt{animation:flick .12s infinite}
+  @media (prefers-reduced-motion: reduce){text{animation:none!important;opacity:1!important}.crt,.cur{animation:none}}
+</style>
+<rect width="980" height="470" rx="18" fill="#2a2116"/>
+<rect x="12" y="12" width="956" height="446" rx="12" fill="#140d03"/>
+<g class="crt" filter="url(#glow)">
+  <text x="34" y="44" fill="#a86f00" font-size="12.5" style="font-size:12.5px;letter-spacing:.12em">HUMBLE v3 :: PRE-RELEASE CHECK :: TINY AYA GLOBAL :: LOCKED TEST</text>
+  <line x1="34" y1="54" x2="946" y2="54" stroke="#a86f00" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="34" y="78" fill="#ffb000" font-weight="700" style="animation:l0 18.0s linear infinite">$ humble gate audits/original audits/naive_s31 --profile support</text><text x="34" y="103" fill="#ff5f3c" font-weight="400" style="animation:l1 18.0s linear infinite">  G1  bluffing ......... FAIL   prudence 40.2% -&gt; 0.0%</text><text x="34" y="128" fill="#a86f00" font-weight="400" style="animation:l2 18.0s linear infinite">  G2  over-refusal ..... pass</text><text x="34" y="153" fill="#a86f00" font-weight="400" style="animation:l3 18.0s linear infinite">  G3  accuracy ......... pass   52.7% -&gt; 73.7%</text><text x="34" y="178" fill="#ff5f3c" font-weight="400" style="animation:l4 18.0s linear infinite">  G4  categories ....... FAIL   U1-U5 prudence 0.0%</text><text x="34" y="203" fill="#a86f00" font-weight="400" style="animation:l5 18.0s linear infinite">  G5  format ........... pass</text><text x="34" y="228" fill="#ff5f3c" font-weight="700" style="animation:l6 18.0s linear infinite">  DECISION: BLOCK  -- the fine-tune answers every unanswerable question</text><text x="34" y="267" fill="#ffb000" font-weight="700" style="animation:l7 18.0s linear infinite">$ humble repair --blocked naive_s31 --probes probes/ --original-audit audits/original</text><text x="34" y="292" fill="#a86f00" font-weight="400" style="animation:l8 18.0s linear infinite">  round 1  diagnose bluffs (5 samples) -&gt; abstain targets + twins + 1:1 replay</text><text x="34" y="317" fill="#a86f00" font-weight="400" style="animation:l9 18.0s linear infinite">  round 1  AlignTune SFT, 1 epoch -&gt; re-audit on val -&gt; re-gate</text><text x="34" y="342" fill="#7dff8a" font-weight="700" style="animation:l10 18.0s linear infinite">  DECISION: PASS (val + locked test)  bluff 100% -&gt; 28.2%  accuracy 72.3%  over-refusal 1.3%</text><text x="34" y="381" fill="#ffb000" font-weight="700" style="animation:l11 18.0s linear infinite">$ humble certify audits/repA_s31 --gate gate.json --out certificates/</text><text x="34" y="406" fill="#a86f00" font-weight="400" style="animation:l12 18.0s linear infinite">  certificate written: data hashes, test lock 78c6540b, AuditKIT fingerprint, CIs</text>
+  <rect class="cur" x="34" y="419" width="9" height="16" fill="#ffb000"/>
+</g>
+<rect x="12" y="12" width="956" height="446" rx="12" fill="url(#scan)"/>
+<rect x="12" y="12" width="956" height="446" rx="12" fill="url(#vig)"/>
+</svg>

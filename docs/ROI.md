@@ -65,7 +65,13 @@ Plus a one-time **≈ $1.30** of GPU time (0.4 h × $3.27) for each HUMBLE check
   reaches a user (a support re-contact; far more in regulated domains) that is ≈ $730,000/month of avoided cost for
   ≈ $1.30 of GPU time per fine-tune.
 
-## 6. Formulas, to plug in your own numbers
+## 6. What made the low cost possible
+
+Everything runs on open Cohere Labs models on one GPU: Tiny Aya as the model being checked and repaired, Aya Expanse 8B
+as the local judge. CuratorKIT checks the repair data, AlignTune runs the short LoRA repair, and AuditKIT scores the
+audits, so a full check-and-repair pass needs no API and no data leaves the machine.
+
+## 7. Formulas, to plug in your own numbers
 
 ```
 api_monthly      = Q × (T_in × P_in + T_out × P_out) / 1e6

@@ -1,35 +1,36 @@
 # HUMBLE: catch and repair bluffing in fine-tuned RAG models before deployment
 
-**Track 1 (Fine-tuning and Data Curation).** Problem statements #3 (primary), #1, #8. Model: CohereLabs/tiny-aya-global.
-Lexsi toolkits: CuratorKIT → AlignTune → AuditKIT.
+**Track 1 (Fine-tuning and Data Curation).** Problem statements #3 (primary), #1, #8. Models: Tiny Aya Global (main),
+Aya Expanse 8B, Tiny Aya Fire and Tiny Aya Earth, all open Cohere Labs models run locally. Lexsi toolkits:
+CuratorKIT → AlignTune → AuditKIT.
 
-Companies build retrieval-augmented assistants on their own documents and often fine-tune the model for domain
-language or format. Retrieval is imperfect, so the passages often do not contain the answer, and fine-tuning on
-answer-only data can teach the model to answer anyway. RAG supplies documents; it does not teach the model to say
-"I don't know".
+Companies put assistants on top of their own documents (RAG) and often fine-tune the model for their domain.
+Search is imperfect, so the retrieved passages often do not contain the answer, and a good model should then say it
+cannot answer. We show that ordinary fine-tuning removes this habit, and that normal accuracy checks miss it.
 
-HUMBLE is a local, pre-deployment release gate for fine-tuned RAG models. It builds probes from a company's
-documents (four passages per prompt: gold plus distractors, distractors only, answer sentence deleted, misleading
-edit; five unanswerable categories: missing fact, out of database, false premise, underspecified, misleading),
-verifies them mechanically and with a local sufficient-context judge, audits the candidate and the original model
-on the same probes, and applies label-based release rules that do not trust model confidence (bluffing with a
-paired, document-clustered CI; over-refusal; accuracy; per-category prudence; format), with thresholds from domain
-profiles. A blocked model is repaired from its own mistakes: multisample diagnosis on a separate probe pool, repair
-data curated with CuratorKIT (bluffs → ABSTAIN, answerable twins, delete-a-fact and misleading variants, RAFT's
-no-gold case flipped to ABSTAIN, 1:1 replay), continued LoRA training with AlignTune, and re-gating. Scoring and
-paired significance run through AuditKIT; every decision ships with a reproducible certificate.
+HUMBLE is a local release check for fine-tuned RAG models. It builds test questions from a company's documents, each
+with four passages, including five kinds of question the passages cannot answer (missing fact, unknown entity, false
+premise, ambiguous question, misleading passage), checked by rule and by a local judge (Aya Expanse 8B). It runs the
+original and the fine-tuned model on the same questions and blocks the fine-tune if it bluffs more, refuses
+answerable questions more, loses accuracy, breaks a question type or garbles its format (paired confidence
+intervals, domain risk profiles). A blocked model is repaired from its own mistakes: refuse the questions it bluffed
+on, answer their answerable twins, mix in normal training data 1:1, and continue the LoRA adapter for one epoch.
+Every decision comes with a certificate.
 
-On Tiny Aya Global with SQuAD-derived RAG probes (locked test, evaluated once per model), a naive fine-tune raised
-accuracy from 52.7% to about 73% but bluffed on every unanswerable question in all three seeds and all five
-categories (prudence 40.2% → 0.0%); P(True) confidence did not reveal it. The gate blocked all three. One round of
-HUMBLE repair from the blocked adapter passed the gate on every seed, kept the accuracy gain (about 72%), and raised
-prudence to about 73% with over-conservativeness near 1%; the repaired model also abstained more on Spanish, Hindi
-and Arabic probes and on legal contracts without training on them. The same recipe, unchanged, gave the same result on Aya Expanse 8B
-(naive blocked at 0% prudence; repair passed every seed at 83% prudence and 0.4% over-refusal), and on Tiny Aya Fire and Tiny Aya Earth (naive blocked; repair passed every seed at about 74% and 73% prudence; on Earth the random-data and prevention arms over-refused and were blocked on the test set, while HUMBLE repair passed every seed). We report negative results as pre-registered:
-repair data built from the model's own mistakes did not beat a random sample of the same size and format (random
-data abstained more; targeted data kept about two more points of accuracy), a fresh honest fine-tune (prevention)
-over-refused enough to be blocked on the test set, two-way DPO after repair added prudence but also over-refusal,
-and training-free weight scaling could not keep any of the fine-tune without bluffing. Ablations show that replaying
-ordinary training data is what prevents over-refusal during repair (without it every seed is blocked), with
-answerable twins adding a smaller effect. The practical result is a one-command check that blocks bluffing fine-tunes and a
-cheap repair (one round, about 15 GPU-minutes) that restores honest abstention without losing the fine-tune's gains.
+CuratorKIT checked every training set (schema, duplicates, provenance) and builds questions from documents.
+AlignTune ran about 70 LoRA training runs through one function. AuditKIT scored every audit (113 in the public
+dataset) and cross-checked our statistics. Aya Expanse 8B as the local judge kept the pipeline free of any API.
+
+On Tiny Aya Global (locked test, evaluated once per model), a standard fine-tune raised accuracy from 52.7% to about
+73% but answered every unanswerable question, in all three seeds and all five question types. The gate blocked all
+three. One round of HUMBLE repair passed on every seed, kept the accuracy (72.3%), cut the bluff rate from 100% to
+27% and kept needless refusals near 2%. The repair also transferred to Spanish, Hindi and Arabic questions and to
+legal contracts. The same recipe, unchanged, worked on Aya Expanse 8B (bluff rate 100% → 17%), Tiny Aya Fire (→ 26%)
+and Tiny Aya Earth (→ 27%), passing every seed each time.
+
+What did not work: repair data built from the model's own mistakes did not beat random data of the same size on
+cost, though on Tiny Aya Earth random data and a fresh honest fine-tune over-refused and were blocked on the test set
+while HUMBLE repair passed every seed. Training an honest model from scratch, adding DPO after repair, and scaling down
+the fine-tune's weights all failed. Mixing in normal training data is what keeps the repair from over-refusing.
+
+The result is a one-command check that blocks bluffing fine-tunes, and a repair that takes about 15 GPU-minutes.

@@ -29,8 +29,8 @@ def fetch():
                               allow_patterns=["v3/audits/**/metrics.json", "v3/audits/**/metrics_judged.json",
                                               "v3/audits/**/gate_*.json", "v3/audits/**/audit.json", "v3/audits/*/_*.json",
                                               "v3/arms/*.json", "v3/probes/*/MANIFEST.json"])
-        except Exception as e:
-            print("fetch", rid, e)
+        except Exception:
+            print(f"skipped {rid} (not public or does not exist)")
 
 
 def load(p):
