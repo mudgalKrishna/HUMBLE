@@ -2,8 +2,8 @@
 
 # ROI: a HUMBLE-repaired Tiny Aya, self-hosted, vs closed-source APIs
 
-*In plain English: what does it cost to run your own repaired chatbot on a rented GPU, compared with paying a big AI
-company per question, and what is it worth to stop the chatbot from making up answers?*
+*What it costs to run your own repaired chatbot on a rented GPU, compared with paying an AI company per question, and
+what it is worth to stop the chatbot from making up answers.*
 
 Every input is either **measured** in this project or a **stated assumption** that a company can replace with its
 own number. Prices are list prices as of November 2026 (sources at the end); they change often, so re-check them.

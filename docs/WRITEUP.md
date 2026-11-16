@@ -12,16 +12,15 @@ Lexsi AI Safety and Alignment Hackathon. Models: Tiny Aya Global (main), Aya Exp
 all open Cohere Labs models run locally. Lexsi toolkits: CuratorKIT → AlignTune → AuditKIT (how we used each: section 2b).
 All tables: [results/v3/RESULTS.md](../results/v3/RESULTS.md) (generated from saved predictions).
 
-## In plain English
+## What HUMBLE is
 
-Most company chatbots first search the company's documents and then answer from what they found (this is called
-RAG). Sometimes the search finds the wrong pages, and the honest reply is "I couldn't find that in our documents".
-Companies also give the chatbot extra training on their own examples (fine-tuning). We found that this training
-makes the chatbot stop admitting it couldn't find the answer: it makes one up instead, every time, on all four
-Cohere models we tested. The usual tests miss it, because they only ask questions that do have answers, and on those
-the trained chatbot scores higher. HUMBLE is a safety inspection before release: it quizzes the chatbot with trick
-questions whose answers are not in the documents, blocks it if it bluffs, and retrains it for about 15 minutes so it
-says "I don't know" again without losing what it learned.
+Most company chatbots search the company's documents and then answer from the pages they found (RAG). When the search
+misses, the right reply is "I couldn't find that in our documents". Companies also fine-tune these chatbots on their own
+example questions and answers. We found that this training makes the chatbot stop giving that reply and invent an
+answer instead, every time, on all four Cohere models we tested. Standard tests don't catch it, because they only ask
+questions the documents can answer, and on those the fine-tuned chatbot scores higher. HUMBLE checks a fine-tuned
+chatbot before release with questions whose answers are not in the documents, blocks it if it bluffs, and retrains it
+for about 15 minutes so it says "I can't answer" again while keeping what it learned.
 
 ## Who it is for
 

@@ -6,7 +6,7 @@
 Aya Expanse 8B, Tiny Aya Fire and Tiny Aya Earth, all open Cohere Labs models run locally. Lexsi toolkits:
 CuratorKIT → AlignTune → AuditKIT.
 
-In plain terms: company chatbots search their documents and answer from what they find, and companies give them
+Company chatbots search their documents and answer from what they find, and companies give them
 extra training on their own examples. We found that this training makes the chatbot stop saying "I couldn't find
 that" and make up an answer instead, every time, on four out of four Cohere models, while normal tests score it higher.
 
