@@ -6,9 +6,9 @@
 Aya Expanse 8B, Tiny Aya Fire and Tiny Aya Earth, all open Cohere Labs models run locally. Lexsi toolkits:
 CuratorKIT → AlignTune → AuditKIT.
 
-A standard fine-tune made four out of four Cohere models answer 100% of the questions their documents could not
-answer, while accuracy went up, so every normal eval approved them. Companies build assistants on their own documents
-and fine-tune them exactly this way, and retrieval often misses, so this is the model that reaches their customers.
+In plain terms: company chatbots search their documents and answer from what they find, and companies give them
+extra training on their own examples. We found that this training makes the chatbot stop saying "I couldn't find
+that" and make up an answer instead, every time, on four out of four Cohere models, while normal tests score it higher.
 
 HUMBLE is a local release check for fine-tuned RAG models. It builds test questions from a company's documents, each
 with four passages, including five kinds of question the passages cannot answer (missing fact, unknown entity, false

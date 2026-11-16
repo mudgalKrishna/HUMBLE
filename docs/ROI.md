@@ -2,6 +2,9 @@
 
 # ROI: a HUMBLE-repaired Tiny Aya, self-hosted, vs closed-source APIs
 
+*In plain English: what does it cost to run your own repaired chatbot on a rented GPU, compared with paying a big AI
+company per question, and what is it worth to stop the chatbot from making up answers?*
+
 Every input is either **measured** in this project or a **stated assumption** that a company can replace with its
 own number. Prices are list prices as of November 2026 (sources at the end); they change often, so re-check them.
 
@@ -67,13 +70,19 @@ Plus a one-time **≈ $1.30** of GPU time (0.4 h × $3.27) for each HUMBLE check
   reaches a user (a support re-contact; far more in regulated domains) that is ≈ $730,000/month of avoided cost for
   ≈ $1.30 of GPU time per fine-tune.
 
-## 6. What made the low cost possible
+## 6. Who gets this value
+
+An AI lab or fine-tuning platform can run the check on every fine-tune it ships, at about $1.30 of GPU time each, and
+attach the certificate. A company with its own document chatbot gets the cost case in section 3 and the risk case in
+section 5. A regulated business gets an audit trail of every release decision.
+
+## 7. What made the low cost possible
 
 Everything runs on open Cohere Labs models on one GPU: Tiny Aya as the model being checked and repaired, Aya Expanse 8B
 as the local judge. CuratorKIT checks the repair data, AlignTune runs the short LoRA repair, and AuditKIT scores the
 audits, so a full check-and-repair pass needs no API and no data leaves the machine.
 
-## 7. Formulas, to plug in your own numbers
+## 8. Formulas, to plug in your own numbers
 
 ```
 api_monthly      = Q × (T_in × P_in + T_out × P_out) / 1e6

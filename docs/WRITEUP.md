@@ -12,6 +12,26 @@ Lexsi AI Safety and Alignment Hackathon. Models: Tiny Aya Global (main), Aya Exp
 all open Cohere Labs models run locally. Lexsi toolkits: CuratorKIT → AlignTune → AuditKIT (how we used each: section 2b).
 All tables: [results/v3/RESULTS.md](../results/v3/RESULTS.md) (generated from saved predictions).
 
+## In plain English
+
+Most company chatbots first search the company's documents and then answer from what they found (this is called
+RAG). Sometimes the search finds the wrong pages, and the honest reply is "I couldn't find that in our documents".
+Companies also give the chatbot extra training on their own examples (fine-tuning). We found that this training
+makes the chatbot stop admitting it couldn't find the answer: it makes one up instead, every time, on all four
+Cohere models we tested. The usual tests miss it, because they only ask questions that do have answers, and on those
+the trained chatbot scores higher. HUMBLE is a safety inspection before release: it quizzes the chatbot with trick
+questions whose answers are not in the documents, blocks it if it bluffs, and retrains it for about 15 minutes so it
+says "I don't know" again without losing what it learned.
+
+## Who it is for
+
+AI labs that ship fine-tuned or domain models (a release gate in the training pipeline that blocks a bluffing
+checkpoint and repairs it with a short run), fine-tuning platforms and model hubs (one check and certificate per
+customer model), companies building chatbots on their own documents (test questions from their documents and a
+PASS/BLOCK before launch), regulated businesses in health, finance and law (stricter domain profiles and an audit
+trail), and AI safety and evaluation teams (honesty metrics that cannot be gamed by refusing everything). All of it
+runs locally, so documents never leave the company's machines.
+
 ## 1. Problem
 
 A company builds a RAG assistant on its documents and fine-tunes the model for its domain. Two things go wrong.
