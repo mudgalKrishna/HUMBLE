@@ -23,7 +23,11 @@ def fetch():
     # per-node repos (<repo>-nb<i>) hold the parallel notebooks' outputs for every base model
     repos = ([own] + [f"{own}-nb{i}" for i in range(1, 9)] if own
              else ["KM2007/humble-runs", "KM2007/humble-v3"] + [f"KM2007/humble-v3-nb{i}" for i in range(1, 9)])
+    from huggingface_hub import HfApi
+    api = HfApi(token=os.environ.get("HF_TOKEN"))
     for rid in repos:
+        if not api.repo_exists(rid, repo_type="dataset"):
+            continue  # per-node repos are private or absent; the public dataset alone reproduces the tables
         try:
             snapshot_download(rid, repo_type="dataset", local_dir=str(DL), token=os.environ.get("HF_TOKEN"),
                               allow_patterns=["v3/audits/**/metrics.json", "v3/audits/**/metrics_judged.json",
